@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Lightbulb, Code, Users, Sparkles, Eye, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Lightbulb, Code, Users, Sparkles } from 'lucide-react';
+import TimelineModal from './TimelineModal';
+import { useContent } from '../hooks/useContent';
 
-interface TimelineEvent {
+export interface TimelineEvent {
   id: string;
   year: string;
   title: string;
@@ -24,12 +26,45 @@ const iconOptions = [
 ];
 
 export default function Timeline() {
+  const { items: contentItems, loading } = useContent('timeline');
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
   const [selectedEventIndex, setSelectedEventIndex] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  // Initialize with default events - ALWAYS AVAILABLE
+  // Initialize with content from API or default events
+  useEffect(() => {
+    // If API data is available, use it
+    if (!loading && contentItems.length > 0) {
+      const publishedEvents = contentItems
+        .filter(item => item.status === 'published')
+        .map((item, index) => ({
+          id: item.id,
+          title: item.title,
+          year: item.data.year,
+          description: item.data.description,
+          detail: item.data.detail,
+          icon: item.data.icon || 'calendar',
+          color: item.data.color || 'from-blue-500 to-blue-600',
+          position: index % 2 === 0 ? 'left' : 'right' as 'left' | 'right',
+          createdAt: new Date(item.createdAt),
+          updatedAt: new Date(item.updatedAt)
+        }))
+        .sort((a, b) => {
+          const getYear = (yearStr: string) => {
+            const match = yearStr.match(/(\d{4})/);
+            return match ? parseInt(match[1]) : 0;
+          };
+          return getYear(b.year) - getYear(a.year);
+        });
+
+      if (publishedEvents.length > 0) {
+        setTimelineEvents(publishedEvents);
+        return;
+      }
+    }
+
+    // Otherwise, use default events
   useEffect(() => {
     const defaultEvents: TimelineEvent[] = [
       {
@@ -106,43 +141,9 @@ export default function Timeline() {
       }
     ];
 
-    // Try to load from CMS, but always fall back to defaults
-    try {
-      const adminTimelineItems = JSON.parse(localStorage.getItem('admin-timeline-items') || '[]');
-      
-      if (adminTimelineItems.length > 0) {
-        // Use CMS data if available
-        const publishedEvents = adminTimelineItems
-          .filter((item: any) => item.status === 'published')
-          .map((item: any) => item.data)
-          .sort((a: any, b: any) => {
-            const getYear = (yearStr: string) => {
-              const match = yearStr.match(/(\d{4})/);
-              return match ? parseInt(match[1]) : 0;
-            };
-            
-            const yearA = getYear(a.year);
-            const yearB = getYear(b.year);
-            
-            return yearB - yearA; // Newest first
-          })
-          .map((event: any, index: number) => ({
-            ...event,
-            position: index % 2 === 0 ? 'left' : 'right' as 'left' | 'right'
-          }));
-
-        if (publishedEvents.length > 0) {
-          setTimelineEvents(publishedEvents);
-          return;
-        }
-      }
-    } catch (error) {
-      console.log('CMS data not available, using defaults');
-    }
-
-    // Always fall back to default events
+    // Fall back to default events if no API data
     setTimelineEvents(defaultEvents);
-  }, []);
+  }, [contentItems, loading]);
 
   // ESC key handler for closing modal
   useEffect(() => {
@@ -213,7 +214,7 @@ export default function Timeline() {
             What I do today, the industry adopts tomorrow.
           </p>
           <div className="mt-4 text-sm text-gray-400">
-            {timelineEvents.length} events • Click 👁️ for full details
+            {timelineEvents.length} events • Click any card for full details
           </div>
         </motion.div>
 
@@ -279,23 +280,8 @@ export default function Timeline() {
                   >
                     <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-6 hover:border-blue-500/30 transition-all duration-300 cursor-pointer"
                          onClick={() => handleEventClick(event, index)}>
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="mb-3">
                         <span className="text-sm text-gray-400 font-mono">{event.year}</span>
-                        
-                        {/* View Details Button */}
-                        <motion.button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleEventClick(event, index);
-                          }}
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors shadow-lg"
-                          title="View full details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </motion.button>
                       </div>
                       
                       <h3 className="text-2xl font-bold text-white mb-3">{event.title}</h3>
@@ -303,7 +289,7 @@ export default function Timeline() {
                       
                       {/* Hint to click for more */}
                       <div className="text-xs text-blue-400 opacity-75">
-                        Click anywhere to read full details
+                        Click to read full story →
                       </div>
                     </div>
                   </motion.div>
@@ -367,143 +353,16 @@ export default function Timeline() {
         </motion.div>
       </div>
 
-      {/* Timeline Event Modal */}
-      <AnimatePresence>
-        {showModal && selectedEvent && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 overflow-y-auto"
-            onClick={handleCloseModal}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="min-h-screen flex items-center justify-center p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                {/* Modal Header */}
-                <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-6 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${selectedEvent.color} flex items-center justify-center mr-4`}>
-                      {React.createElement(getIconComponent(selectedEvent.icon), { className: "w-5 h-5 text-white" })}
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-white">{selectedEvent.title}</h2>
-                      <p className="text-gray-400">{selectedEvent.year}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    {/* Navigation */}
-                    <button
-                      onClick={handlePrevEvent}
-                      disabled={selectedEventIndex === 0}
-                      className="p-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Previous event"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    
-                    <span className="text-sm text-gray-400 px-2">
-                      {(selectedEventIndex || 0) + 1} of {timelineEvents.length}
-                    </span>
-                    
-                    <button
-                      onClick={handleNextEvent}
-                      disabled={selectedEventIndex === timelineEvents.length - 1}
-                      className="p-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Next event"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                    
-                    <div className="w-px h-6 bg-gray-700 mx-2" />
-                    
-                    <button
-                      onClick={handleCloseModal}
-                      className="p-2 text-gray-400 hover:text-white transition-colors"
-                      title="Close"
-                    >
-                      <X className="w-6 h-6" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Modal Content */}
-                <div className="p-8">
-                  {/* Description */}
-                  <div className="mb-8">
-                    <h3 className="text-xl font-bold text-white mb-4">Overview</h3>
-                    <p className="text-lg text-gray-300 leading-relaxed">
-                      {selectedEvent.description}
-                    </p>
-                  </div>
-
-                  {/* Full Details */}
-                  <div className="mb-8">
-                    <h3 className="text-xl font-bold text-white mb-4">Details</h3>
-                    <div className="prose prose-invert max-w-none">
-                      <p className="text-gray-300 leading-relaxed whitespace-pre-line">
-                        {selectedEvent.detail}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Timeline Position */}
-                  <div className="bg-gray-800/50 rounded-lg p-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="text-gray-400">
-                        <span className="font-medium">Period:</span> {selectedEvent.year}
-                      </div>
-                      <div className="text-gray-400">
-                        <span className="font-medium">Position:</span> {(selectedEventIndex || 0) + 1} of {timelineEvents.length} events
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="border-t border-gray-700 p-6 flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    {selectedEventIndex !== null && selectedEventIndex > 0 && (
-                      <button
-                        onClick={handlePrevEvent}
-                        className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        <ChevronLeft className="w-4 h-4 mr-2" />
-                        Previous
-                      </button>
-                    )}
-                  </div>
-                  
-                  <button
-                    onClick={handleCloseModal}
-                    className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                  >
-                    Close
-                  </button>
-                  
-                  <div className="flex items-center space-x-4">
-                    {selectedEventIndex !== null && selectedEventIndex < timelineEvents.length - 1 && (
-                      <button
-                        onClick={handleNextEvent}
-                        className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        Next
-                        <ChevronRight className="w-4 h-4 ml-2" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Timeline Event Modal - renderowany przez portal */}
+      <TimelineModal
+        isOpen={showModal}
+        event={selectedEvent}
+        eventIndex={selectedEventIndex}
+        totalEvents={timelineEvents.length}
+        onClose={handleCloseModal}
+        onPrev={handlePrevEvent}
+        onNext={handleNextEvent}
+      />
     </section>
   );
 }

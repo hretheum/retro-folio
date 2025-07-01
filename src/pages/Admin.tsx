@@ -813,6 +813,7 @@ function ContentItemCard({
             
             {item.type === 'timeline' && (
               <div>
+                <div><strong>Title:</strong> {item.data.title || 'Not set'}</div>
                 <div><strong>Year:</strong> {item.data.year || 'Not set'}</div>
                 <div><strong>Description:</strong> {item.data.description || 'Not set'}</div>
               </div>

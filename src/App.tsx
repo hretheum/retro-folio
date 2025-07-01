@@ -114,23 +114,26 @@ function MainApp() {
           sections={sections.map(s => s.name)}
         />
 
-        {/* Sidebar */}
-        <RetroSidebar
-          currentSection={currentSection}
-          sectionNames={sections.map(s => s.name)}
-          sectionOverflows={sectionOverflows}
-          onSectionChange={handleSectionChange}
-          onMusicStateChange={handleMusicStateChange}
-        />
+        {/* Layout wrapper for sidebar and content */}
+        <div className="retro-layout-wrapper">
+          {/* Sidebar */}
+          <RetroSidebar
+            currentSection={currentSection}
+            sectionNames={sections.map(s => s.name)}
+            sectionOverflows={sectionOverflows}
+            onSectionChange={handleSectionChange}
+            onMusicStateChange={handleMusicStateChange}
+          />
 
-        {/* Main Content with Scrollable Container */}
-        <SectionContent
-          sections={sections}
-          currentSection={currentSection}
-          sectionsRef={sectionsRef}
-          sectionContainerRef={sectionContainerRef}
-          onSectionChange={handleSectionChange}
-        />
+          {/* Main Content with Scrollable Container */}
+          <SectionContent
+            sections={sections}
+            currentSection={currentSection}
+            sectionsRef={sectionsRef}
+            sectionContainerRef={sectionContainerRef}
+            onSectionChange={handleSectionChange}
+          />
+        </div>
 
       </AppLayout>
 

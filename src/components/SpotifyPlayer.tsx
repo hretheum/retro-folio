@@ -78,13 +78,6 @@ export default function SpotifyPlayer({ onPlayStateChange }: SpotifyPlayerProps)
         }}
       />
 
-      {/* Connection Status */}
-      <div className="retro-spotify-status">
-        <div className="retro-spotify-indicator connected">
-          <span className="retro-spotify-dot"></span>
-          🎵 FAKE AUDIO PLAYER ACTIVE
-        </div>
-      </div>
 
       {/* Current Track Info */}
       <div className="retro-spotify-track">
@@ -97,9 +90,6 @@ export default function SpotifyPlayer({ onPlayStateChange }: SpotifyPlayerProps)
           </div>
           <div className="retro-spotify-track-album">
             from "{currentTrack.album}"
-          </div>
-          <div className="retro-spotify-track-status">
-            🔊 DEMO MODE - NOT REAL SPOTIFY
           </div>
         </div>
       </div>
@@ -168,17 +158,6 @@ export default function SpotifyPlayer({ onPlayStateChange }: SpotifyPlayerProps)
         ))}
       </div>
 
-      {/* Demo Notice */}
-      <div className="retro-spotify-demo">
-        <div className="retro-spotify-demo-text">
-          🎵 FAKE PLAYER DEMO 🎵
-        </div>
-        <div className="retro-spotify-demo-info">
-          Playing: Darude - Sandstorm (Local MP3)
-          <br />
-          NOT connected to Spotify API
-        </div>
-      </div>
     </div>
   );
 }

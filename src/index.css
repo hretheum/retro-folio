@@ -184,22 +184,22 @@ body:has(.portfolio-page) {
     inset 2px 2px 4px rgba(255, 255, 255, 0.2),
     inset -2px -2px 4px rgba(0, 0, 0, 0.5),
     0 0 20px rgba(0, 128, 255, 0.3);
-  display: grid;
-  grid-template-areas:
-    "header header"
-    "nav nav"
-    "sidebar content"
-    "footer footer";
-  grid-template-columns: 280px 1fr; /* Increased sidebar width */
-  grid-template-rows: auto auto 1fr auto;
-  min-height: 100vh;
-  max-height: 100vh; /* Prevent overflow */
-  overflow: hidden; /* Prevent main container overflow */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Layout wrapper for sidebar and content */
+.retro-layout-wrapper {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
 }
 
 /* Header */
 .retro-header {
-  grid-area: header;
   background: linear-gradient(45deg, 
     var(--retro-hot-pink) 0%, 
     var(--retro-purple) 50%, 
@@ -319,7 +319,6 @@ body:has(.portfolio-page) {
 
 /* Navigation */
 .retro-nav {
-  grid-area: nav;
   background: linear-gradient(90deg, 
     var(--retro-dark-gray) 0%, 
     var(--retro-gray) 50%, 
@@ -446,15 +445,14 @@ body:has(.portfolio-page) {
 
 /* Sidebar - FIXED */
 .retro-sidebar {
-  grid-area: sidebar;
+  width: 280px;
   background: var(--retro-black);
   border-right: 4px inset var(--retro-gray);
   padding: 1rem;
   overflow-y: auto;
   overflow-x: hidden;
-  /* FIXED: Proper height calculation */
-  height: calc(100vh - 200px); /* Account for header, nav, footer */
-  max-height: calc(100vh - 200px);
+  height: 100%;
+  flex-shrink: 0;
   /* Custom scrollbar */
   scrollbar-width: thin;
   scrollbar-color: var(--retro-neon-green) var(--retro-black);
@@ -672,13 +670,11 @@ body:has(.portfolio-page) {
 
 /* Main Content with Enhanced Scrolling - FIXED */
 .retro-content {
-  grid-area: content;
+  flex: 1;
   background: var(--retro-black);
   position: relative;
   overflow: hidden;
-  /* FIXED: Proper height calculation */
-  height: calc(100vh - 200px); /* Account for header, nav, footer */
-  max-height: calc(100vh - 200px);
+  height: 100%;
 }
 
 .retro-section-container {
@@ -722,16 +718,14 @@ body:has(.portfolio-page) {
 
 /* Footer - FIXED with more space */
 .retro-footer {
-  grid-area: footer;
   background: linear-gradient(45deg, 
     var(--retro-dark-gray) 0%, 
     var(--retro-gray) 100%);
   border-top: 4px inset var(--retro-gray);
   padding: 1rem; /* Increased padding */
   text-align: center;
-  /* FIXED: More space for footer */
+  /* FIXED: Auto-sizing footer */
   min-height: auto;
-  max-height: 140px; /* Increased footer height */
   overflow: hidden;
 }
 
@@ -905,7 +899,7 @@ body:has(.portfolio-page) {
 /* Enhanced Scroll Help */
 .retro-scroll-help {
   position: fixed;
-  bottom: 2rem;
+  bottom: 15rem; /* Positioned higher to avoid footer */
   left: 50%;
   transform: translateX(-50%);
   z-index: 30;
