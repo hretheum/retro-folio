@@ -34,6 +34,10 @@ export default function Timeline() {
 
   // Initialize with content from API or default events
   useEffect(() => {
+    console.log('Timeline useEffect - loading:', loading, 'contentItems:', contentItems);
+    console.log('Timeline - Total items:', contentItems.length);
+    console.log('Timeline - Published items:', contentItems.filter(item => item.status === 'published').length);
+    
     // If API data is available, use it
     if (!loading && contentItems.length > 0) {
       const publishedEvents = contentItems

@@ -20,15 +20,20 @@ export function useContent(type: 'work' | 'timeline' | 'experiment') {
   const fetchItems = async () => {
     try {
       setLoading(true);
+      console.log(`[useContent] Fetching ${type} items from /api/content/${type}`);
       const response = await fetch(`/api/content/${type}`);
-      if (!response.ok) throw new Error('Failed to fetch');
+      console.log(`[useContent] Response status:`, response.status);
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
       const data = await response.json();
+      console.log(`[useContent] Received ${type} data:`, data);
       setItems(data);
     } catch (err) {
+      console.error(`[useContent] Error fetching ${type}:`, err);
       setError(err instanceof Error ? err.message : 'Unknown error');
       // Fallback to localStorage for now
       const localData = localStorage.getItem(`admin-${type}-items`);
       if (localData) {
+        console.log(`[useContent] Using localStorage fallback for ${type}`);
         setItems(JSON.parse(localData));
       }
     } finally {

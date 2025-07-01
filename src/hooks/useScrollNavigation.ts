@@ -222,6 +222,20 @@ export const useScrollNavigation = ({
           e.preventDefault();
           newSection = totalSections - 1;
           break;
+        // Number keys 1-7 for direct section navigation
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+          e.preventDefault();
+          const sectionIndex = parseInt(e.key) - 1; // Convert to 0-based index
+          if (sectionIndex >= 0 && sectionIndex < totalSections) {
+            newSection = sectionIndex;
+          }
+          break;
       }
       
       if (newSection !== currentSection) {
