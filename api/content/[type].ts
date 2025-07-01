@@ -1,35 +1,69 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from 'redis';
 
-// Storage abstraction - works with Vercel KV (Redis) or fallback
-class Storage {
-  private kv: any = null;
+// Initialize Redis client
+let redisClient: any = null;
 
-  constructor() {
-    // Try to initialize Vercel KV
+async function getRedisClient() {
+  if (!redisClient) {
     try {
-      // @vercel/kv will auto-detect credentials from env vars
-      const { kv } = require('@vercel/kv');
-      this.kv = kv;
+      // Use REDIS_URL from Vercel environment
+      const redisUrl = process.env.REDIS_URL || process.env.KV_URL;
+      
+      if (!redisUrl) {
+        console.log('Redis URL not found, using in-memory storage');
+        return null;
+      }
+
+      redisClient = createClient({
+        url: redisUrl
+      });
+
+      redisClient.on('error', (err: any) => console.error('Redis Client Error', err));
+      
+      await redisClient.connect();
+      console.log('Redis connected successfully');
     } catch (error) {
-      console.log('Vercel KV not available, using in-memory storage');
+      console.error('Failed to connect to Redis:', error);
+      return null;
     }
   }
+  
+  return redisClient;
+}
 
+// Storage abstraction
+class Storage {
   async get(key: string): Promise<any> {
-    if (this.kv) {
-      return await this.kv.get(key);
+    const client = await getRedisClient();
+    
+    if (client) {
+      try {
+        const data = await client.get(key);
+        return data ? JSON.parse(data) : null;
+      } catch (error) {
+        console.error('Redis GET error:', error);
+      }
     }
+    
     // Fallback to in-memory for local dev
     return global[key] || null;
   }
 
   async set(key: string, value: any): Promise<void> {
-    if (this.kv) {
-      await this.kv.set(key, value);
-    } else {
-      // Fallback to in-memory for local dev
-      global[key] = value;
+    const client = await getRedisClient();
+    
+    if (client) {
+      try {
+        await client.set(key, JSON.stringify(value));
+        return;
+      } catch (error) {
+        console.error('Redis SET error:', error);
+      }
     }
+    
+    // Fallback to in-memory for local dev
+    global[key] = value;
   }
 }
 

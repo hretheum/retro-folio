@@ -22,13 +22,14 @@ import {
   Star
 } from 'lucide-react';
 import { sanitizeInput } from '../utils/validation';
+import { useContent } from '../hooks/useContent';
 
 interface ContentItem {
   id: string;
   type: 'work' | 'timeline' | 'experiment';
   title: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
   status: 'draft' | 'published';
   featured?: boolean;
   data: any; // Specific data structure for each type
@@ -36,13 +37,21 @@ interface ContentItem {
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<'work' | 'timeline' | 'experiment'>('work');
-  const [items, setItems] = useState<ContentItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<ContentItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all');
   const [isEditing, setIsEditing] = useState(false);
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+
+  // Use content hooks for each tab
+  const workContent = useContent('work');
+  const timelineContent = useContent('timeline');
+  const experimentContent = useContent('experiment');
+
+  // Get current content based on active tab
+  const currentContent = activeTab === 'work' ? workContent : 
+                        activeTab === 'timeline' ? timelineContent : 
+                        experimentContent;
 
   // Add admin-page class to body on mount
   useEffect(() => {
@@ -52,316 +61,40 @@ export default function Admin() {
     };
   }, []);
 
-  // Load data on mount and tab change
-  useEffect(() => {
-    loadItems();
-  }, [activeTab]);
+  // Combine all items for search purposes
+  const allItems = [
+    ...workContent.items,
+    ...timelineContent.items,
+    ...experimentContent.items
+  ];
 
-  // Filter items based on search and status
-  useEffect(() => {
-    let filtered = items.filter(item => item.type === activeTab);
-    
+  // Filter items based on current tab, search and status
+  const filteredItems = currentContent.items.filter(item => {
+    // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(item => 
-        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        JSON.stringify(item.data).toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           JSON.stringify(item.data).toLowerCase().includes(searchTerm.toLowerCase());
+      if (!matchesSearch) return false;
     }
     
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(item => item.status === statusFilter);
+    // Status filter
+    if (statusFilter !== 'all' && item.status !== statusFilter) {
+      return false;
     }
     
-    setFilteredItems(filtered);
-  }, [items, activeTab, searchTerm, statusFilter]);
+    return true;
+  });
 
-  const loadItems = () => {
-    // Load existing data and migrate to admin format
-    const allItems: ContentItem[] = [];
-    
-    // Load Work items (from existing hardcoded data in Work.tsx)
-    const existingWorkProjects = [
-      {
-        id: 'tvp-cms',
-        title: 'Digital Publishing Revolution',
-        client: 'TVP - Poland\'s National Broadcaster',
-        category: 'Media & Publishing',
-        year: '2019-2021',
-        duration: '24 months',
-        teamSize: '12 people',
-        description: 'Complete digital transformation of Poland\'s largest broadcaster',
-        challenge: 'Unify 500+ journalists across 16 regions with inconsistent workflows',
-        solution: 'Enterprise CMS with real-time collaboration and automated publishing',
-        impact: '60% faster publishing, unified brand experience, 10M+ monthly users',
-        role: [
-          'Led 6-month research phase across all regions',
-          'Designed workflows for real-time news publishing',
-          'Facilitated first-ever national editorial workshop',
-          'Implemented WCAG 2.1 accessibility standards',
-          'Created design system for 20+ digital properties'
-        ],
-        tags: ['Enterprise UX', 'CMS Design', 'Accessibility', 'Workflow Design', 'Design Systems'],
-        metrics: {
-          'Users': '10M+',
-          'Regions': '16',
-          'Efficiency': '+60%',
-          'Properties': '20+'
-        },
-        color: 'from-red-500 to-red-600',
-        featured: true
-      },
-      {
-        id: 'polsat-streaming',
-        title: 'Telco to Streaming Platform',
-        client: 'Cyfrowy Polsat - Media Transformation',
-        category: 'Streaming & Entertainment',
-        year: '2015-2018',
-        duration: '36 months',
-        teamSize: '25 people',
-        description: 'Transforming traditional cable TV into Netflix competitor',
-        challenge: 'Transform cable TV company into modern streaming platform',
-        solution: 'Unified quad-play platform serving TV, Internet, Mobile, and Streaming',
-        impact: '40% reduction in support calls, 2M+ active subscribers',
-        role: [
-          'Multi-year design leadership across all touchpoints',
-          'Quad-play service architecture design',
-          'Design system for 20+ digital properties',
-          'Multi-device experience strategy (TV, mobile, web)',
-          'User research and testing programs'
-        ],
-        tags: ['Design Systems', 'Multi-platform', 'Streaming UX', 'Leadership', 'Service Design'],
-        metrics: {
-          'Subscribers': '2M+',
-          'Properties': '20+',
-          'Support Reduction': '40%',
-          'Devices': '5+'
-        },
-        color: 'from-blue-500 to-blue-600',
-        featured: true
-      },
-      {
-        id: 'vw-bank',
-        title: 'Banking\'s First UX Tests',
-        client: 'Volkswagen Bank - Pioneering Usability',
-        category: 'Financial Services',
-        year: '2003-2005',
-        duration: '18 months',
-        teamSize: '8 people',
-        description: 'Poland\'s first comprehensive usability testing in banking',
-        challenge: 'Launch online banking when Poles didn\'t trust internet transactions',
-        solution: 'Evidence-based design through extensive user testing and iteration',
-        impact: 'Established UX as legitimate practice in Polish banking industry',
-        role: [
-          'Conducted 30+ moderated usability tests',
-          'Convinced skeptical executives with data',
-          'Created reusable design patterns',
-          'Documented ROI of UX investment',
-          'Trained internal teams on user-centered design'
-        ],
-        tags: ['User Research', 'Banking UX', 'Usability Testing', 'Innovation', 'Industry Pioneer'],
-        metrics: {
-          'Tests': '30+',
-          'Year': '2003',
-          'First': 'Poland',
-          'ROI': '300%'
-        },
-        color: 'from-green-500 to-green-600',
-        featured: true
-      }
-    ];
+  // Initial data migration - this will be handled by the useContent hook
+  // The hook already has fallback to localStorage if API fails
 
-    // Load Timeline items (from existing data in Timeline.tsx)
-    const existingTimelineEvents = [
-      {
-        id: '1',
-        year: '2001-2003',
-        title: 'Tech Journalist',
-        description: 'First to write about usability in Polish media',
-        detail: 'Published groundbreaking articles in Wprost magazine introducing NetPR and web usability concepts to Polish market',
-        icon: 'lightbulb',
-        color: 'from-purple-500 to-purple-600',
-        position: 'left'
-      },
-      {
-        id: '2',
-        year: '2003-2006',
-        title: 'Usability Pioneer',
-        description: 'Established Poland\'s first professional UX lab',
-        detail: 'At Grey/Argonauts, created testing methodologies and convinced skeptical clients about the value of user research',
-        icon: 'users',
-        color: 'from-blue-500 to-blue-600',
-        position: 'right'
-      },
-      {
-        id: '3',
-        year: '2007-2009',
-        title: 'Agency Founder',
-        description: 'Launched komitywa.com (market wasn\'t ready)',
-        detail: 'Too early to market with UX-focused agency. Valuable lessons in timing and market education',
-        icon: 'sparkles',
-        color: 'from-red-500 to-red-600',
-        position: 'left'
-      },
-      {
-        id: '4',
-        year: '2017-2022',
-        title: 'Design Systems at Scale',
-        description: 'Built enterprise design system at ING',
-        detail: 'Led chapter of 25+ designers, implemented design systems serving thousands of developers across multiple countries',
-        icon: 'code',
-        color: 'from-green-500 to-green-600',
-        position: 'right'
-      },
-      {
-        id: '5',
-        year: '2023-2024',
-        title: 'AI Builder Phase',
-        description: 'Creating RAG systems and AI agents',
-        detail: 'Building personal knowledge RAG, MCP servers, and hireverse.app - demonstrating the future of AI-assisted work',
-        icon: 'sparkles',
-        color: 'from-cyan-500 to-cyan-600',
-        position: 'left'
-      },
-      {
-        id: '6',
-        year: '2025',
-        title: 'What\'s Next?',
-        description: 'Currently building: hireverse.app',
-        detail: 'Day-by-day public build of AI agent that interviews recruiters. The future of hiring is being written now.',
-        icon: 'calendar',
-        color: 'from-yellow-500 to-yellow-600',
-        position: 'right'
-      }
-    ];
-
-    // Load Experiment items (from existing data in Experiments.tsx)
-    const existingExperiments = [
-      {
-        id: 'hireverse-app',
-        name: 'hireverse.app',
-        description: 'AI that interviews recruiters (yes, reversed)',
-        status: 'Day 11/30 of public build',
-        tech: ['Next.js 15', 'GPT-4', 'TypeScript'],
-        highlight: 'Viral on day 8',
-        icon: 'MessageSquare',
-        color: 'from-green-500 to-green-600',
-        links: {
-          live: 'https://hireverse.app',
-          github: '#'
-        }
-      },
-      {
-        id: 'personal-rag',
-        name: 'Personal Knowledge RAG',
-        description: '10 years of design wisdom, instantly searchable',
-        status: 'Production ready',
-        tech: ['n8n', 'Pinecone', 'OpenAI'],
-        highlight: 'Answers questions about past projects',
-        icon: 'Brain',
-        color: 'from-blue-500 to-blue-600',
-        links: {
-          github: '#',
-          demo: '#'
-        }
-      },
-      {
-        id: 'mcp-meeting-intelligence',
-        name: 'MCP Meeting Intelligence',
-        description: 'Never lose meeting context again',
-        status: 'Beta testing',
-        tech: ['Model Context Protocol', 'Notion', 'Confluence'],
-        highlight: 'AI-enhanced notes',
-        icon: 'Zap',
-        color: 'from-purple-500 to-purple-600',
-        links: {
-          github: '#'
-        }
-      }
-    ];
-
-    // Check if we have admin data, if not migrate from existing data
-    const adminWorkItems = JSON.parse(localStorage.getItem('admin-work-items') || '[]');
-    const adminTimelineItems = JSON.parse(localStorage.getItem('admin-timeline-items') || '[]');
-    const adminExperimentItems = JSON.parse(localStorage.getItem('admin-experiment-items') || '[]');
-
-    // If no admin data exists, migrate from existing hardcoded data
-    if (adminWorkItems.length === 0) {
-      const migratedWorkItems = existingWorkProjects.map(project => ({
-        id: project.id,
-        type: 'work',
-        title: project.title,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date(),
-        status: 'published',
-        featured: project.featured,
-        data: project
-      }));
-      localStorage.setItem('admin-work-items', JSON.stringify(migratedWorkItems));
-      allItems.push(...migratedWorkItems);
-    } else {
-      allItems.push(...adminWorkItems.map((item: any) => ({ 
-        ...item, 
-        type: 'work', 
-        createdAt: new Date(item.createdAt), 
-        updatedAt: new Date(item.updatedAt) 
-      })));
-    }
-
-    if (adminTimelineItems.length === 0) {
-      const migratedTimelineItems = existingTimelineEvents.map(event => ({
-        id: event.id,
-        type: 'timeline',
-        title: event.title,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date(),
-        status: 'published',
-        data: event
-      }));
-      localStorage.setItem('admin-timeline-items', JSON.stringify(migratedTimelineItems));
-      allItems.push(...migratedTimelineItems);
-    } else {
-      allItems.push(...adminTimelineItems.map((item: any) => ({ 
-        ...item, 
-        type: 'timeline', 
-        createdAt: new Date(item.createdAt), 
-        updatedAt: new Date(item.updatedAt) 
-      })));
-    }
-
-    if (adminExperimentItems.length === 0) {
-      const migratedExperimentItems = existingExperiments.map(experiment => ({
-        id: experiment.id,
-        type: 'experiment',
-        title: experiment.name,
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date(),
-        status: 'published',
-        data: experiment
-      }));
-      localStorage.setItem('admin-experiment-items', JSON.stringify(migratedExperimentItems));
-      allItems.push(...migratedExperimentItems);
-    } else {
-      allItems.push(...adminExperimentItems.map((item: any) => ({ 
-        ...item, 
-        type: 'experiment', 
-        createdAt: new Date(item.createdAt), 
-        updatedAt: new Date(item.updatedAt) 
-      })));
-    }
-    
-    setItems(allItems);
-  };
-
-  const saveItems = (updatedItems: ContentItem[]) => {
-    const workItems = updatedItems.filter(item => item.type === 'work');
-    const timelineItems = updatedItems.filter(item => item.type === 'timeline');
-    const experimentItems = updatedItems.filter(item => item.type === 'experiment');
-    
-    localStorage.setItem('admin-work-items', JSON.stringify(workItems));
-    localStorage.setItem('admin-timeline-items', JSON.stringify(timelineItems));
-    localStorage.setItem('admin-experiment-items', JSON.stringify(experimentItems));
-    
-    setItems(updatedItems);
+  // Helper to refresh all content
+  const refreshAllContent = async () => {
+    await Promise.all([
+      workContent.refetch(),
+      timelineContent.refetch(),
+      experimentContent.refetch()
+    ]);
   };
 
   const handleCreate = () => {
@@ -369,8 +102,8 @@ export default function Admin() {
       id: Date.now().toString(),
       type: activeTab,
       title: 'New Item',
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       status: 'draft',
       data: getDefaultData(activeTab)
     };
@@ -384,65 +117,79 @@ export default function Admin() {
     setIsEditing(true);
   };
 
-  const handleSave = (updatedItem: ContentItem) => {
-    updatedItem.updatedAt = new Date();
-    
-    const updatedItems = editingItem?.id && items.find(item => item.id === editingItem.id)
-      ? items.map(item => item.id === updatedItem.id ? updatedItem : item)
-      : [...items, updatedItem];
-    
-    saveItems(updatedItems);
-    setIsEditing(false);
-    setEditingItem(null);
+  const handleSave = async (updatedItem: ContentItem) => {
+    try {
+      // Check if this is a new item or an update
+      const existingItem = currentContent.items.find(item => item.id === updatedItem.id);
+      
+      if (existingItem) {
+        // Update existing item
+        await currentContent.updateItem(updatedItem.id, updatedItem);
+      } else {
+        // Create new item
+        const { id, createdAt, updatedAt, ...itemData } = updatedItem;
+        await currentContent.createItem(itemData);
+      }
+      
+      setIsEditing(false);
+      setEditingItem(null);
+    } catch (error) {
+      console.error('Failed to save item:', error);
+      alert('Failed to save item. Please try again.');
+    }
   };
 
-  const handleDelete = (id: string) => {
-    const updatedItems = items.filter(item => item.id !== id);
-    saveItems(updatedItems);
-    setShowDeleteConfirm(null);
+  const handleDelete = async (id: string) => {
+    try {
+      await currentContent.deleteItem(id);
+      setShowDeleteConfirm(null);
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+      alert('Failed to delete item. Please try again.');
+    }
   };
 
-  const handleDuplicate = (item: ContentItem) => {
-    const duplicatedItem: ContentItem = {
-      ...item,
-      id: Date.now().toString(),
-      title: `${item.title} (Copy)`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      status: 'draft'
-    };
-    
-    const updatedItems = [...items, duplicatedItem];
-    saveItems(updatedItems);
+  const handleDuplicate = async (item: ContentItem) => {
+    try {
+      const { id, createdAt, updatedAt, ...itemData } = item;
+      await currentContent.createItem({
+        ...itemData,
+        title: `${item.title} (Copy)`,
+        status: 'draft'
+      });
+    } catch (error) {
+      console.error('Failed to duplicate item:', error);
+      alert('Failed to duplicate item. Please try again.');
+    }
   };
 
-  const handleToggleStatus = (item: ContentItem) => {
-    const updatedItem = {
-      ...item,
-      status: item.status === 'published' ? 'draft' : 'published',
-      updatedAt: new Date()
-    } as ContentItem;
-    
-    const updatedItems = items.map(i => i.id === item.id ? updatedItem : i);
-    saveItems(updatedItems);
+  const handleToggleStatus = async (item: ContentItem) => {
+    try {
+      await currentContent.updateItem(item.id, {
+        status: item.status === 'published' ? 'draft' : 'published'
+      });
+    } catch (error) {
+      console.error('Failed to toggle status:', error);
+      alert('Failed to update status. Please try again.');
+    }
   };
 
-  const handleToggleFeatured = (item: ContentItem) => {
-    const updatedItem = {
-      ...item,
-      featured: !item.featured,
-      updatedAt: new Date()
-    };
-    
-    const updatedItems = items.map(i => i.id === item.id ? updatedItem : i);
-    saveItems(updatedItems);
+  const handleToggleFeatured = async (item: ContentItem) => {
+    try {
+      await currentContent.updateItem(item.id, {
+        featured: !item.featured
+      });
+    } catch (error) {
+      console.error('Failed to toggle featured:', error);
+      alert('Failed to update featured status. Please try again.');
+    }
   };
 
   const exportData = () => {
     const data = {
-      work: items.filter(item => item.type === 'work'),
-      timeline: items.filter(item => item.type === 'timeline'),
-      experiments: items.filter(item => item.type === 'experiment'),
+      work: workContent.items,
+      timeline: timelineContent.items,
+      experiments: experimentContent.items,
       exportDate: new Date().toISOString()
     };
     
@@ -455,23 +202,36 @@ export default function Admin() {
     URL.revokeObjectURL(url);
   };
 
-  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const importData = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target?.result as string);
-        const importedItems = [
-          ...data.work.map((item: any) => ({ ...item, type: 'work', createdAt: new Date(item.createdAt), updatedAt: new Date(item.updatedAt) })),
-          ...data.timeline.map((item: any) => ({ ...item, type: 'timeline', createdAt: new Date(item.createdAt), updatedAt: new Date(item.updatedAt) })),
-          ...data.experiments.map((item: any) => ({ ...item, type: 'experiment', createdAt: new Date(item.createdAt), updatedAt: new Date(item.updatedAt) }))
-        ];
         
-        saveItems(importedItems);
+        // Import work items
+        for (const item of data.work || []) {
+          const { id, createdAt, updatedAt, ...itemData } = item;
+          await workContent.createItem(itemData);
+        }
+        
+        // Import timeline items
+        for (const item of data.timeline || []) {
+          const { id, createdAt, updatedAt, ...itemData } = item;
+          await timelineContent.createItem(itemData);
+        }
+        
+        // Import experiment items
+        for (const item of data.experiments || []) {
+          const { id, createdAt, updatedAt, ...itemData } = item;
+          await experimentContent.createItem(itemData);
+        }
+        
         alert('Data imported successfully!');
       } catch (error) {
+        console.error('Import error:', error);
         alert('Error importing data. Please check the file format.');
       }
     };
@@ -522,10 +282,13 @@ export default function Admin() {
   };
 
   const tabs = [
-    { id: 'work', label: 'My Work', icon: Briefcase, count: items.filter(i => i.type === 'work').length },
-    { id: 'timeline', label: 'Timeline', icon: Clock, count: items.filter(i => i.type === 'timeline').length },
-    { id: 'experiment', label: 'Experiments', icon: Lightbulb, count: items.filter(i => i.type === 'experiment').length }
+    { id: 'work', label: 'My Work', icon: Briefcase, count: workContent.items.length },
+    { id: 'timeline', label: 'Timeline', icon: Clock, count: timelineContent.items.length },
+    { id: 'experiment', label: 'Experiments', icon: Lightbulb, count: experimentContent.items.length }
   ];
+
+  // Loading state
+  const isLoading = workContent.loading || timelineContent.loading || experimentContent.loading;
 
   return (
     <div className="min-h-screen bg-black text-white admin-page">
@@ -569,11 +332,12 @@ export default function Admin() {
               </label>
               
               <button
-                onClick={loadItems}
+                onClick={refreshAllContent}
                 className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                disabled={isLoading}
               >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
+                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Loading...' : 'Refresh'}
               </button>
             </div>
           </div>
@@ -639,7 +403,7 @@ export default function Admin() {
             {/* Actions */}
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-400">
-                {filteredItems.length} of {items.filter(i => i.type === activeTab).length} items
+                {filteredItems.length} of {currentContent.items.length} items
               </div>
               
               <button
@@ -657,7 +421,14 @@ export default function Admin() {
       {/* Content List */}
       <main className="py-8 px-6">
         <div className="max-w-7xl mx-auto">
-          {filteredItems.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-16">
+              <div className="text-gray-400">
+                <RefreshCw className="w-16 h-16 mx-auto mb-4 animate-spin opacity-50" />
+                <h3 className="text-xl font-semibold">Loading content...</h3>
+              </div>
+            </div>
+          ) : filteredItems.length === 0 ? (
             <div className="text-center py-16">
               <div className="text-gray-400 mb-4">
                 <Briefcase className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -797,8 +568,8 @@ function ContentItemCard({
           </div>
           
           <div className="text-sm text-gray-400 mb-4">
-            <div>Created: {item.createdAt.toLocaleDateString()}</div>
-            <div>Updated: {item.updatedAt.toLocaleDateString()}</div>
+            <div>Created: {new Date(item.createdAt).toLocaleDateString()}</div>
+            <div>Updated: {new Date(item.updatedAt).toLocaleDateString()}</div>
           </div>
           
           {/* Type-specific preview */}
@@ -813,7 +584,7 @@ function ContentItemCard({
             
             {item.type === 'timeline' && (
               <div>
-                <div><strong>Title:</strong> {item.data.title || 'Not set'}</div>
+                <div><strong>Title:</strong> {item.title || 'Not set'}</div>
                 <div><strong>Year:</strong> {item.data.year || 'Not set'}</div>
                 <div><strong>Description:</strong> {item.data.description || 'Not set'}</div>
               </div>
