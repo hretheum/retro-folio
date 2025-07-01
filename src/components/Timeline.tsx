@@ -65,7 +65,6 @@ export default function Timeline() {
     }
 
     // Otherwise, use default events
-  useEffect(() => {
     const defaultEvents: TimelineEvent[] = [
       {
         id: '1',
