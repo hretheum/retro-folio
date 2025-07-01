@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Plus, 
@@ -19,10 +19,12 @@ import {
   Download,
   Upload,
   RefreshCw,
-  Star
+  Star,
+  LogOut
 } from 'lucide-react';
 import { sanitizeInput } from '../utils/validation';
 import { useContent } from '../hooks/useContent';
+import { useAuth } from '../components/AuthWrapper';
 
 interface ContentItem {
   id: string;
@@ -36,6 +38,8 @@ interface ContentItem {
 }
 
 export default function Admin() {
+  const navigate = useNavigate();
+  const { logout, userEmail } = useAuth();
   const [activeTab, setActiveTab] = useState<'work' | 'timeline' | 'experiment'>('work');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all');
@@ -312,6 +316,12 @@ export default function Admin() {
             </div>
             
             <div className="flex items-center space-x-4">
+              {userEmail && (
+                <span className="text-sm text-gray-400">
+                  {userEmail}
+                </span>
+              )}
+              
               <button
                 onClick={exportData}
                 className="flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -330,6 +340,17 @@ export default function Admin() {
                   className="hidden"
                 />
               </label>
+              
+              <button
+                onClick={() => {
+                  logout();
+                  navigate('/');
+                }}
+                className="flex items-center px-4 py-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-colors"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </button>
               
               <button
                 onClick={refreshAllContent}
