@@ -1,48 +1,34 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Users, Target, Zap, TrendingUp, Award, Heart } from 'lucide-react';
+import { Users, Target, Zap, TrendingUp, Award, Heart, MessageCircle, Calendar } from 'lucide-react';
+import { useLeadershipContent } from '../hooks/useLeadershipContent';
 
 export default function Leadership() {
-  const metrics = [
-    { icon: Users, label: 'Teams Built', value: '5', description: 'from scratch' },
-    { icon: Target, label: 'Designers Managed', value: '50+', description: 'total' },
-    { icon: TrendingUp, label: 'Retention Rate', value: '87%', description: 'average' },
-    { icon: Award, label: 'Promotions Enabled', value: '30+', description: 'career growth' },
-    { icon: Heart, label: 'Still in Touch', value: '80%', description: 'former team members' }
-  ];
+  const { content, loading } = useLeadershipContent();
 
-  const pillars = [
-    {
-      title: 'Team Scaling & Organization',
-      subtitle: 'From Zero to Chapter',
-      content: [
-        'Built design teams at ING Bank: 0 → 25 designers in matrix organization',
-        'Managing 20+ designers at Sportradar in tribe structure',
-        'Created Poland\'s first UX team at Grey/Argonauts',
-        'Developed "Hub & Spoke" and "Design Pairs" frameworks'
-      ]
-    },
-    {
-      title: 'Ways of Working',
-      subtitle: 'Design ↔ Agile Integration',
-      content: [
-        'Design Sprints ahead of dev sprints',
-        'Dual-track agile with continuous discovery',
-        'Design system as living organism',
-        '3-amigos sessions that designers actually attend'
-      ]
-    },
-    {
-      title: 'Leadership Philosophy',
-      subtitle: 'Lead by Building',
-      content: [
-        'Still prototype (in React now)',
-        'Still run user research',
-        'Still code (AI tools currently)',
-        'Teams that innovate, not just execute'
-      ]
-    }
-  ];
+  // Icon mapping
+  const iconMap: Record<string, any> = {
+    'users': Users,
+    'target': Target,
+    'trending-up': TrendingUp,
+    'award': Award,
+    'heart': Heart,
+    'zap': Zap,
+    'message-circle': MessageCircle,
+    'calendar': Calendar
+  };
+
+  if (loading) {
+    return (
+      <section className="relative min-h-screen py-20 px-6 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </section>
+    );
+  }
+
+  // Sort metrics and pillars by order
+  const sortedMetrics = [...content.metrics].sort((a, b) => a.order - b.order);
+  const sortedPillars = [...content.pillars].sort((a, b) => a.order - b.order);
 
   return (
     <section className="relative min-h-screen py-20 px-6">
@@ -55,12 +41,10 @@ export default function Leadership() {
           className="text-center mb-20"
         >
           <h2 className="text-5xl md:text-6xl font-serif font-bold text-white mb-6">
-            Building Teams That Ship
+            {content.mainTitle}
           </h2>
           <p className="text-xl text-gray-300 max-w-4xl mx-auto leading-relaxed">
-            I don't just manage designers - I build self-organizing teams that deliver. 
-            20+ years of scaling design orgs from 0 to 25+, implementing ways of working 
-            that actually work, and bridging the gap between design dreams and agile reality.
+            {content.mainDescription}
           </p>
         </motion.div>
 
@@ -71,29 +55,32 @@ export default function Leadership() {
           transition={{ delay: 0.3, duration: 0.8 }}
           className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-20"
         >
-          {metrics.map((metric, index) => (
-            <motion.div
-              key={metric.label}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * index, duration: 0.6 }}
-              className="text-center group"
-            >
-              <div className="mb-4 mx-auto w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center group-hover:bg-blue-500/20 transition-colors duration-300">
-                <metric.icon className="w-8 h-8 text-blue-400" />
-              </div>
-              <div className="text-3xl font-bold text-white mb-2">{metric.value}</div>
-              <div className="text-sm text-gray-400 uppercase tracking-wide mb-1">{metric.label}</div>
-              <div className="text-xs text-gray-500">{metric.description}</div>
-            </motion.div>
-          ))}
+          {sortedMetrics.map((metric, index) => {
+            const IconComponent = iconMap[metric.icon] || Users;
+            return (
+              <motion.div
+                key={metric.id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index, duration: 0.6 }}
+                className="text-center group"
+              >
+                <div className="mb-4 mx-auto w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center group-hover:bg-blue-500/20 transition-colors duration-300">
+                  <IconComponent className="w-8 h-8 text-blue-400" />
+                </div>
+                <div className="text-3xl font-bold text-white mb-2">{metric.value}</div>
+                <div className="text-sm text-gray-400 uppercase tracking-wide mb-1">{metric.label}</div>
+                <div className="text-xs text-gray-500">{metric.description}</div>
+              </motion.div>
+            );
+          })}
         </motion.div>
 
         {/* Three Pillars */}
         <div className="grid md:grid-cols-3 gap-8">
-          {pillars.map((pillar, index) => (
+          {sortedPillars.map((pillar, index) => (
             <motion.div
-              key={pillar.title}
+              key={pillar.id}
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 + index * 0.2, duration: 0.8 }}
@@ -124,7 +111,7 @@ export default function Leadership() {
           transition={{ delay: 1.2, duration: 0.8 }}
           className="mt-20 text-center"
         >
-          <h3 className="text-3xl font-bold text-white mb-8">Scaling Framework in Action</h3>
+          <h3 className="text-3xl font-bold text-white mb-8">{content.scalingTitle}</h3>
           <div className="bg-gray-900/30 rounded-2xl p-8 border border-gray-800">
             <div className="flex items-center justify-between max-w-4xl mx-auto">
               <div className="text-center">
@@ -153,8 +140,30 @@ export default function Leadership() {
               </div>
             </div>
             <p className="text-gray-400 mt-6">
-              The ING Experience: Building Europe's largest design chapter
+              {content.scalingDescription}
             </p>
+          </div>
+        </motion.div>
+
+        {/* Let's Talk Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.5, duration: 0.8 }}
+          className="mt-20 text-center"
+        >
+          <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl p-12 border border-gray-800">
+            <h3 className="text-3xl font-bold text-white mb-6">{content.letsTalkTitle}</h3>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
+              {content.letsTalkDescription}
+            </p>
+            <button 
+              onClick={() => window.location.href = '#contact'}
+              className="px-8 py-4 bg-blue-500 text-white rounded-full font-medium hover:bg-blue-600 transition-colors duration-300 inline-flex items-center gap-3"
+            >
+              <MessageCircle className="w-5 h-5" />
+              {content.letsTalkCTA}
+            </button>
           </div>
         </motion.div>
       </div>

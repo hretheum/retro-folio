@@ -20,11 +20,13 @@ import {
   Upload,
   RefreshCw,
   Star,
-  LogOut
+  LogOut,
+  Users
 } from 'lucide-react';
 import { sanitizeInput } from '../utils/validation';
 import { useContent } from '../hooks/useContent';
 import { useAuth } from '../components/AuthWrapper';
+import LeadershipFields from '../components/admin/LeadershipFields';
 
 interface ContentItem {
   id: string;
@@ -40,7 +42,7 @@ interface ContentItem {
 export default function Admin() {
   const navigate = useNavigate();
   const { logout, userEmail } = useAuth();
-  const [activeTab, setActiveTab] = useState<'work' | 'timeline' | 'experiment'>('work');
+  const [activeTab, setActiveTab] = useState<'work' | 'timeline' | 'experiment' | 'leadership'>('work');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all');
   const [isEditing, setIsEditing] = useState(false);
@@ -55,7 +57,8 @@ export default function Admin() {
   // Get current content based on active tab
   const currentContent = activeTab === 'work' ? workContent : 
                         activeTab === 'timeline' ? timelineContent : 
-                        experimentContent;
+                        activeTab === 'experiment' ? experimentContent :
+                        { items: [], loading: false, error: null, createItem: async () => {}, updateItem: async () => {}, deleteItem: async () => {}, refetch: async () => {} };
 
   // Add admin-page class to body on mount
   useEffect(() => {
@@ -288,7 +291,8 @@ export default function Admin() {
   const tabs = [
     { id: 'work', label: 'My Work', icon: Briefcase, count: workContent.items.length },
     { id: 'timeline', label: 'Timeline', icon: Clock, count: timelineContent.items.length },
-    { id: 'experiment', label: 'Experiments', icon: Lightbulb, count: experimentContent.items.length }
+    { id: 'experiment', label: 'Experiments', icon: Lightbulb, count: experimentContent.items.length },
+    { id: 'leadership', label: 'About Me', icon: Users, count: 0 }
   ];
 
   // Loading state
@@ -391,8 +395,9 @@ export default function Admin() {
       </section>
 
       {/* Filters & Actions */}
-      <section className="py-6 px-6 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto">
+      {activeTab !== 'leadership' && (
+        <section className="py-6 px-6 border-b border-gray-800">
+          <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             {/* Search & Filters */}
             <div className="flex items-center space-x-4">
@@ -437,12 +442,15 @@ export default function Admin() {
             </div>
           </div>
         </div>
-      </section>
+        </section>
+      )}
 
       {/* Content List */}
       <main className="py-8 px-6">
         <div className="max-w-7xl mx-auto">
-          {isLoading ? (
+          {activeTab === 'leadership' ? (
+            <LeadershipFields />
+          ) : isLoading ? (
             <div className="text-center py-16">
               <div className="text-gray-400">
                 <RefreshCw className="w-16 h-16 mx-auto mb-4 animate-spin opacity-50" />
