@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import Hero from './components/Hero';
 import Navigation from './components/Navigation';
@@ -25,6 +25,7 @@ import FloatingElements from './components/FloatingElements';
 import MusicStatusIndicator from './components/MusicStatusIndicator';
 import SectionContent from './components/SectionContent';
 import { useScrollNavigation } from './hooks/useScrollNavigation';
+import { AuthProvider, useAuth, LoginPage } from './components/AuthWrapper';
 
 function MainApp() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -177,17 +178,46 @@ function MainApp() {
   );
 }
 
+// Protected Route component
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<MainApp />} />
-        <Route path="/portfolio" element={<Portfolio />} />
-        <Route path="/case/:caseId" element={<CaseStudy />} />
-        <Route path="/experiment/:experimentId" element={<ExperimentDetail />} />
-        <Route path="/admin" element={<Admin />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<MainApp />} />
+          <Route path="/portfolio" element={<Portfolio />} />
+          <Route path="/case/:caseId" element={<CaseStudy />} />
+          <Route path="/experiment/:experimentId" element={<ExperimentDetail />} />
+          <Route path="/login" element={
+            <LoginPage 
+              allowedEmails={
+                import.meta.env.VITE_ALLOWED_EMAILS 
+                  ? import.meta.env.VITE_ALLOWED_EMAILS.split(',').map(e => e.trim())
+                  : []
+              } 
+            />
+          } />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <Admin />
+              </ProtectedRoute>
+            } 
+          />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
