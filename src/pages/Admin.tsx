@@ -21,12 +21,14 @@ import {
   RefreshCw,
   Star,
   LogOut,
-  Users
+  Users,
+  Phone
 } from 'lucide-react';
 import { sanitizeInput } from '../utils/validation';
 import { useContent } from '../hooks/useContent';
 import { useAuth } from '../components/AuthWrapper';
 import LeadershipFields from '../components/admin/LeadershipFields';
+import ContactFields from '../components/admin/ContactFields';
 
 interface ContentItem {
   id: string;
@@ -42,7 +44,7 @@ interface ContentItem {
 export default function Admin() {
   const navigate = useNavigate();
   const { logout, userEmail } = useAuth();
-  const [activeTab, setActiveTab] = useState<'work' | 'timeline' | 'experiment' | 'leadership'>('work');
+  const [activeTab, setActiveTab] = useState<'work' | 'timeline' | 'experiment' | 'leadership' | 'contact'>('work');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all');
   const [isEditing, setIsEditing] = useState(false);
@@ -292,7 +294,8 @@ export default function Admin() {
     { id: 'work', label: 'My Work', icon: Briefcase, count: workContent.items.length },
     { id: 'timeline', label: 'Timeline', icon: Clock, count: timelineContent.items.length },
     { id: 'experiment', label: 'Experiments', icon: Lightbulb, count: experimentContent.items.length },
-    { id: 'leadership', label: 'About Me', icon: Users, count: 0 }
+    { id: 'leadership', label: 'About Me', icon: Users, count: 0 },
+    { id: 'contact', label: 'Contact', icon: Phone, count: 0 }
   ];
 
   // Loading state
@@ -395,7 +398,7 @@ export default function Admin() {
       </section>
 
       {/* Filters & Actions */}
-      {activeTab !== 'leadership' && (
+      {activeTab !== 'leadership' && activeTab !== 'contact' && (
         <section className="py-6 px-6 border-b border-gray-800">
           <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
@@ -450,6 +453,8 @@ export default function Admin() {
         <div className="max-w-7xl mx-auto">
           {activeTab === 'leadership' ? (
             <LeadershipFields />
+          ) : activeTab === 'contact' ? (
+            <ContactFields />
           ) : isLoading ? (
             <div className="text-center py-16">
               <div className="text-gray-400">

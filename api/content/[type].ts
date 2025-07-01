@@ -92,7 +92,7 @@ export default async function handler(
   }
 
   // Validate content type
-  const validTypes = ['work', 'timeline', 'experiment', 'leadership'];
+  const validTypes = ['work', 'timeline', 'experiment', 'leadership', 'contact'];
   if (!validTypes.includes(type)) {
     return res.status(400).json({ error: 'Invalid content type' });
   }
