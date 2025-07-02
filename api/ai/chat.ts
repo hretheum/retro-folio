@@ -43,19 +43,42 @@ function generateResponse(userMessage: string, context: string, messages: Messag
                    userMessage.toLowerCase().includes('cześć') ||
                    userMessage.toLowerCase().includes('dzień dobry');
   
-  // If we have relevant context from Pinecone, use it
+  const msg = userMessage.toLowerCase();
+  
+  // If we have relevant context from Pinecone, use it intelligently
   if (context && context.length > 100) {
-    const contextSummary = context.substring(0, 800); // Use first part of context
+    // Clean up the context - remove duplicate lines and short fragments
+    const contextLines = context.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 20) // Remove very short fragments
+      .filter((line, index, self) => self.indexOf(line) === index); // Remove duplicates
+    
+    const cleanContext = contextLines.join('\n\n');
+    
+    // For questions about Hireverse specifically
+    if (msg.includes('hireverse')) {
+      const hirerverseContext = contextLines
+        .filter(line => line.toLowerCase().includes('hireverse'))
+        .join(' ');
+      
+      if (hirerverseContext) {
+        return isPolish
+          ? `Hireverse to mój aktualny projekt - platforma AI do rekrutacji, która odwraca tradycyjny proces. ${hirerverseContext}\n\nPo latach frustracji z gównianymi procesami rekrutacyjnymi, postanowiłem to naprawić. Chcesz wiedzieć więcej o technologii czy koncepcji?`
+          : `Hireverse is my current project - an AI recruitment platform that flips the traditional process. ${hirerverseContext}\n\nAfter years of frustration with shitty hiring processes, I decided to fix it. Want to know more about the technology or the concept?`;
+      }
+    }
+    
+    // Use context but make it conversational
+    const contextSummary = cleanContext.substring(0, 1000);
     
     if (isPolish) {
-      return `Na podstawie mojego doświadczenia: ${contextSummary}\n\nCzy mogę jakoś rozwinąć tę odpowiedź?`;
+      return `${contextSummary}\n\nTo tyle jeśli chodzi o ${msg.includes('projekt') ? 'moje projekty' : 'to zagadnienie'}. Masz jakieś konkretne pytania?`;
     } else {
-      return `Based on my experience: ${contextSummary}\n\nWould you like me to elaborate on any part of this?`;
+      return `${contextSummary}\n\nThat's the gist of ${msg.includes('project') ? 'my projects' : 'it'}. Any specific questions?`;
     }
   }
   
   // Fallback responses when no specific context is found
-  const msg = userMessage.toLowerCase();
   
   // Simple pattern matching for common questions
   if (msg.includes('experience') || msg.includes('doświadczenie')) {
@@ -108,11 +131,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       console.log('[CHAT] Found', searchResults.length, 'search results');
       
-      // Build context from search results
+      // Log detailed search results for debugging
       if (searchResults.length > 0) {
+        console.log('[CHAT] === DETAILED SEARCH RESULTS ===');
+        searchResults.forEach((result, index) => {
+          console.log(`[CHAT] Result ${index + 1}:`);
+          console.log(`[CHAT] - Score: ${result.score}`);
+          console.log(`[CHAT] - Text length: ${result.chunk.text.length}`);
+          console.log(`[CHAT] - Text preview: "${result.chunk.text.substring(0, 200)}..."`);
+          console.log(`[CHAT] - Metadata:`, JSON.stringify(result.chunk.metadata, null, 2));
+          console.log(`[CHAT] - Full text: "${result.chunk.text}"`);
+          console.log('[CHAT] ---');
+        });
+        console.log('[CHAT] === END SEARCH RESULTS ===');
+        
         context = searchResults
           .map(r => r.chunk.text)
           .join('\n\n');
+        
+        console.log(`[CHAT] Combined context length: ${context.length} characters`);
+      } else {
+        console.log('[CHAT] No search results found');
       }
     } catch (searchError) {
       console.error('[CHAT] Pinecone search error:', searchError);

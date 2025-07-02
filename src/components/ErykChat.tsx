@@ -99,6 +99,23 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
       inputRef.current?.focus();
     }
   }, [isOpen]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!isOpen || embedded || !onClose) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, embedded, onClose]);
   
   // Save messages to localStorage
   useEffect(() => {

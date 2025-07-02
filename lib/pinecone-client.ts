@@ -14,18 +14,30 @@ export async function getPineconeIndex(indexName: string = 'retro-folio') {
 
 // Convert our chunks to Pinecone format
 export function chunksToPineconeRecords(chunks: EmbeddedChunk[]): PineconeRecord[] {
-  return chunks.map(chunk => ({
-    id: chunk.id,
-    values: chunk.embedding,
-    metadata: {
-      text: chunk.text,
-      contentId: chunk.metadata.contentId,
-      contentType: chunk.metadata.contentType,
-      chunkIndex: chunk.metadata.chunkIndex,
-      totalChunks: chunk.metadata.totalChunks,
-      ...chunk.metadata,
-    },
-  }));
+  return chunks.map(chunk => {
+    // Log first chunk for debugging
+    if (chunk.id.endsWith('-chunk-0')) {
+      console.log('[chunksToPineconeRecords] First chunk sample:', {
+        id: chunk.id,
+        textLength: chunk.text.length,
+        textPreview: chunk.text.substring(0, 150),
+        metadata: chunk.metadata
+      });
+    }
+    
+    return {
+      id: chunk.id,
+      values: chunk.embedding,
+      metadata: {
+        text: chunk.text,
+        contentId: chunk.metadata.contentId,
+        contentType: chunk.metadata.contentType,
+        chunkIndex: chunk.metadata.chunkIndex,
+        totalChunks: chunk.metadata.totalChunks,
+        ...chunk.metadata,
+      },
+    };
+  });
 }
 
 // Upsert embeddings to Pinecone

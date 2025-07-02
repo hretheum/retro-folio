@@ -36,13 +36,25 @@ export class PineconeVectorStore {
       includeMetadata: true,
     });
 
+    // Log first match for debugging
+    if (matches.length > 0) {
+      console.log('[PineconeVectorStore] First match details:', {
+        id: matches[0].id,
+        score: matches[0].score,
+        metadataKeys: Object.keys(matches[0].metadata || {}),
+        textLength: matches[0].metadata?.text?.length || 0,
+        textPreview: matches[0].metadata?.text?.substring(0, 100) || 'NO TEXT',
+        fullMetadata: matches[0].metadata
+      });
+    }
+
     // Convert Pinecone results to our format
     return matches
       .filter((match: any) => match.score >= minScore)
       .map((match: any) => ({
         chunk: {
           id: match.id,
-          text: match.metadata.text,
+          text: match.metadata.text || 'NO TEXT FOUND',
           embedding: [], // We don't return embeddings from search
           metadata: match.metadata,
           tokens: match.metadata.tokens || 0,
