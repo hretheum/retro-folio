@@ -22,7 +22,6 @@ import ScrollProgressBar from './components/ScrollProgressBar';
 import SectionNavigator from './components/SectionNavigator';
 import ScrollInstructions from './components/ScrollInstructions';
 import FloatingElements from './components/FloatingElements';
-import MusicStatusIndicator from './components/MusicStatusIndicator';
 import SectionContent from './components/SectionContent';
 import { useScrollNavigation } from './hooks/useScrollNavigation';
 import { AuthProvider, useAuth, LoginPage } from './components/AuthWrapper';
@@ -30,7 +29,6 @@ import { AuthProvider, useAuth, LoginPage } from './components/AuthWrapper';
 function MainApp() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionsRef = useRef<HTMLDivElement[]>([]);
@@ -78,10 +76,6 @@ function MainApp() {
   }, []);
 
 
-  // Handle music state from Spotify player
-  const handleMusicStateChange = (isPlaying: boolean) => {
-    setIsMusicPlaying(isPlaying);
-  };
 
 
   return (
@@ -123,7 +117,6 @@ function MainApp() {
             sectionNames={sections.map(s => s.name)}
             sectionOverflows={sectionOverflows}
             onSectionChange={handleSectionChange}
-            onMusicStateChange={handleMusicStateChange}
           />
 
           {/* Main Content with Scrollable Container */}
@@ -171,9 +164,6 @@ function MainApp() {
 
       {/* Floating Retro Elements */}
       <FloatingElements />
-
-      {/* Music Status Indicator */}
-      <MusicStatusIndicator isMusicPlaying={isMusicPlaying} />
     </div>
   );
 }

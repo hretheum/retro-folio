@@ -6,15 +6,13 @@ interface RetroSidebarProps {
   sectionNames: string[];
   sectionOverflows: boolean;
   onSectionChange: (index: number) => void;
-  onMusicStateChange: (isPlaying: boolean) => void;
 }
 
 const RetroSidebar: React.FC<RetroSidebarProps> = ({
   currentSection,
   sectionNames,
   sectionOverflows,
-  onSectionChange,
-  onMusicStateChange
+  onSectionChange
 }) => {
   const guestbookEntries = JSON.parse(localStorage.getItem('guestbook-entries') || '[]');
 
