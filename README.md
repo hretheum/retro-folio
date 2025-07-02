@@ -118,4 +118,4 @@ This is a personal portfolio project. Feel free to fork and adapt for your own u
 
 ---
 
-Built with 💜 and nostalgia for the golden age of the internet.
+Built with 💜 and nostalgia for the golden age of the internet. 
