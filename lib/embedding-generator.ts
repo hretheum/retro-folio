@@ -56,6 +56,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
   const response = await openai.embeddings.create({
     model: AI_MODELS.embedding,
     input: text,
+    dimensions: 1024, // Match Pinecone index dimension
   });
   
   return response.data[0].embedding;

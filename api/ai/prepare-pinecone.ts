@@ -53,8 +53,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         const pineconeStore = new PineconeVectorStore('production');
         
-        // Clear existing embeddings (optional - remove if you want to append)
-        await pineconeStore.clear();
+        // Clear existing embeddings (optional - uncomment if you want to replace all)
+        // await pineconeStore.clear();
         
         // Add new embeddings
         await pineconeStore.add(result.embeddings);
