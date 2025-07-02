@@ -4,7 +4,7 @@ import { semanticSearch } from '../../lib/semantic-search';
 import { buildMessages } from '../../lib/chat-prompts';
 import { logChatInteraction } from '../../lib/analytics';
 
-// Rate limiting
+// Rate limiting configuration
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
