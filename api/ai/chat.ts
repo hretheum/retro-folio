@@ -1,51 +1,83 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { openai, AI_MODELS } from '../../lib/openai';
+import { semanticSearch } from '../../lib/semantic-search';
+import { buildMessages } from '../../lib/chat-prompts';
+import { logChatInteraction } from '../../lib/analytics';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('Chat endpoint called with:', JSON.stringify(req.body));
-  
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { messages } = req.body;
+    const { messages, sessionId = 'anonymous' } = req.body;
     
-    if (!messages || !Array.isArray(messages)) {
+    // Validate messages
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Messages array is required' });
     }
     
+    // Get the last user message
     const lastMessage = messages[messages.length - 1];
     if (!lastMessage || lastMessage.role !== 'user') {
       return res.status(400).json({ error: 'Last message must be from user' });
     }
     
-    // Set SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
+    const startTime = Date.now();
     
-    // Send a simple test response
-    const testResponse = `Hello! You said: "${lastMessage.content}". I'm Eryk AI and I'm working now!`;
+    // Search for relevant context
+    const searchResults = await semanticSearch({
+      query: lastMessage.content,
+      topK: 5,
+      minScore: 0.7,
+    });
     
-    // Send response character by character to simulate streaming
-    for (const char of testResponse) {
-      res.write(`data: ${JSON.stringify(char)}\n\n`);
-      await new Promise(resolve => setTimeout(resolve, 10)); // Small delay
-    }
+    // Build messages for OpenAI
+    const previousMessages = messages.slice(0, -1);
+    const openAIMessages = buildMessages(
+      lastMessage.content,
+      searchResults.context,
+      previousMessages
+    );
     
-    // Send done signal
-    res.write('data: [DONE]\n\n');
-    res.end();
+    // Get completion from OpenAI (non-streaming for simplicity)
+    const completion = await openai.chat.completions.create({
+      model: AI_MODELS.chat,
+      messages: openAIMessages,
+      temperature: 0.7,
+      max_tokens: 1000,
+      stream: false,
+    });
+    
+    const responseContent = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
+    
+    // Log the interaction
+    const responseTime = Date.now() - startTime;
+    logChatInteraction({
+      sessionId,
+      query: lastMessage.content,
+      responseTime,
+      tokenUsage: {
+        prompt: completion.usage?.prompt_tokens || 0,
+        completion: completion.usage?.completion_tokens || 0,
+        total: completion.usage?.total_tokens || 0,
+      },
+      contextFound: searchResults.results.length > 0,
+      timestamp: new Date().toISOString(),
+    }).catch(console.error);
+    
+    // Return JSON response - this is what useChat expects
+    return res.status(200).json({
+      content: responseContent,
+    });
     
   } catch (error) {
-    console.error('Chat error:', error);
+    console.error('Chat endpoint error:', error);
     
-    if (!res.headersSent) {
-      return res.status(500).json({
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+    return res.status(500).json({
+      error: 'Failed to process chat request',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 }
