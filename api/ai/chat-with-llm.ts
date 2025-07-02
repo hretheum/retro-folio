@@ -68,17 +68,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Search Pinecone for relevant context
     let context = '';
     try {
-      const searchResults = await hybridSearchPinecone(lastMessage.content, {
-        topK: 8,
+      // For general project queries, search for multiple terms
+      const searchQuery = lastMessage.content.toLowerCase().includes('projekt') || 
+                         lastMessage.content.toLowerCase().includes('project') ||
+                         lastMessage.content.toLowerCase().includes('doświadczenie') ||
+                         lastMessage.content.toLowerCase().includes('experience')
+        ? 'projects experience portfolio Volkswagen Revolut Spotify mBank ING Polsat design lead senior'
+        : lastMessage.content;
+      
+      console.log('[CHAT-LLM] Search query:', searchQuery);
+      
+      const searchResults = await hybridSearchPinecone(searchQuery, {
+        topK: 12, // Increase to get more results
         namespace: 'production',
       });
       
       console.log('[CHAT-LLM] Found', searchResults.length, 'search results');
       
+      // Log what Pinecone returned for debugging
+      searchResults.forEach((result, index) => {
+        console.log(`[CHAT-LLM] Result ${index + 1} (score: ${result.score}):`);
+        console.log(`[CHAT-LLM] Text preview: ${result.chunk.text.substring(0, 150)}...`);
+        console.log(`[CHAT-LLM] Metadata:`, result.chunk.metadata);
+      });
+      
       if (searchResults.length > 0) {
-        context = searchResults
+        // Deduplicate and ensure variety of projects
+        const seenContent = new Set<string>();
+        const diverseResults = searchResults.filter(result => {
+          const text = result.chunk.text.toLowerCase();
+          const key = text.substring(0, 100); // Use first 100 chars as key
+          
+          if (seenContent.has(key)) {
+            return false;
+          }
+          seenContent.add(key);
+          return true;
+        });
+        
+        console.log(`[CHAT-LLM] After deduplication: ${diverseResults.length} unique results`);
+        
+        context = diverseResults
           .map(r => r.chunk.text)
-          .join('\n\n');
+          .join('\n\n---\n\n'); // Add separator between chunks
       }
     } catch (searchError) {
       console.error('[CHAT-LLM] Pinecone search error:', searchError);
