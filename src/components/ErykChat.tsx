@@ -54,7 +54,7 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
     setError(null);
     
     try {
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch('/api/ai/chat-with-llm', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

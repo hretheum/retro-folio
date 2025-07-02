@@ -64,10 +64,12 @@ function extractMultipleProjects(context: string): ProjectData[] {
   const lines = context.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   const projects: ProjectData[] = [];
   
-  // Known project patterns with company names and roles
+  // Known project patterns - match company name and role at the beginning of line
   const projectPatterns = [
-    /^(.*?)\s+(Senior Product Designer|Product Designer|Design Lead|Lead Designer|Consultant|Product Design Consultant)$/i,
-    /^(Volkswagen Digital|Polsat Box Go|TVP VOD|ING Bank|Hireverse|Allegro|mBank|Revolut)\s*(.*)$/i
+    // Match: "Company Name Role" where role is at the end
+    /^([\w\s]+?)\s+(Senior Product Designer|Product Designer|Design Lead|Lead Designer|Design Systems? Consultant|Product Design Consultant|Contract Product Designer)(?:\s|$)/i,
+    // Match specific known companies
+    /^(Volkswagen Digital|Polsat Box Go|TVP VOD|ING Bank|Hireverse|Allegro|mBank|Revolut|Spotify|GitLab|Cognition Labs)(?:\s+(.+?))?(?:\s+(?:Jako|Pracowałem|Projektowałem|Konsultowałem)|\s*$)/i
   ];
   
   let currentProject: ProjectData | null = null;
