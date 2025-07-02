@@ -25,7 +25,7 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
       {
         id: 'welcome',
         role: 'assistant',
-        content: 'Cześć! Jestem Eryk AI. Możesz mnie zapytać o moje doświadczenie, projekty technologiczne, filozofię przywództwa lub cokolwiek innego związanego z moją karierą. W czym mogę pomóc?',
+        content: 'Hi! I\'m Eryk AI. You can ask me about my experience, technology projects, leadership philosophy, or anything else related to my career. How can I help you?',
       },
     ],
   });
@@ -150,7 +150,7 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
                           </button>
                           {feedbackGiven[message.id] && (
                             <span className="text-xs text-gray-500 ml-2">
-                              Dziękuję za feedback!
+                              Thanks for your feedback!
                             </span>
                           )}
                         </div>
@@ -179,7 +179,7 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
                 <div className="message error">
                   <div className="message-content">
                     <div className="message-text text-red-400">
-                      Przepraszam, wystąpił błąd. Spróbuj ponownie później.
+                      Sorry, an error occurred. Please try again later.
                     </div>
                   </div>
                 </div>
@@ -195,7 +195,7 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
                 type="text"
                 value={input}
                 onChange={handleInputChange}
-                placeholder="Zapytaj o projekty, doświadczenie..."
+                placeholder="Ask about projects, experience..."
                 className="flex-1 px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg 
                          text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 
                          transition-colors"
@@ -213,13 +213,13 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
                 ) : (
                   <Send className="w-5 h-5" />
                 )}
-                <span className="sr-only">Wyślij</span>
+                <span className="sr-only">Send</span>
               </button>
             </form>
             
             {/* Disclaimer */}
             <div className="text-xs text-gray-500 text-center mt-2">
-              Powered by AI • Odpowiedzi oparte na dostępnych danych
+              Powered by AI • Responses based on available data
             </div>
           </div>
         </motion.div>
