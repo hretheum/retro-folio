@@ -1,79 +1,57 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { openai, AI_MODELS } from '../../lib/openai';
-import { semanticSearch } from '../../lib/semantic-search';
-import { buildMessages } from '../../lib/chat-prompts';
-import { logChatInteraction } from '../../lib/analytics';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('=== CHAT ENDPOINT DEBUG ===');
+  console.log('Method:', req.method);
+  console.log('Headers:', req.headers);
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { messages, sessionId = 'anonymous' } = req.body;
+    const { messages } = req.body;
+    
+    console.log('Messages:', messages);
     
     // Validate messages
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      console.error('No messages provided');
       return res.status(400).json({ error: 'Messages array is required' });
     }
     
     // Get the last user message
     const lastMessage = messages[messages.length - 1];
+    console.log('Last message:', lastMessage);
+    
     if (!lastMessage || lastMessage.role !== 'user') {
+      console.error('Last message is not from user');
       return res.status(400).json({ error: 'Last message must be from user' });
     }
     
-    const startTime = Date.now();
+    // For now, just return a simple response to test
+    const responseContent = `Test response: You said "${lastMessage.content}". This is a test from Eryk AI!`;
     
-    // Search for relevant context
-    const searchResults = await semanticSearch({
-      query: lastMessage.content,
-      topK: 5,
-      minScore: 0.7,
-    });
+    console.log('Sending response:', responseContent);
     
-    // Build messages for OpenAI
-    const previousMessages = messages.slice(0, -1);
-    const openAIMessages = buildMessages(
-      lastMessage.content,
-      searchResults.context,
-      previousMessages
-    );
-    
-    // Get completion from OpenAI (non-streaming for simplicity)
-    const completion = await openai.chat.completions.create({
-      model: AI_MODELS.chat,
-      messages: openAIMessages,
-      temperature: 0.7,
-      max_tokens: 1000,
-      stream: false,
-    });
-    
-    const responseContent = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
-    
-    // Log the interaction
-    const responseTime = Date.now() - startTime;
-    logChatInteraction({
-      sessionId,
-      query: lastMessage.content,
-      responseTime,
-      tokenUsage: {
-        prompt: completion.usage?.prompt_tokens || 0,
-        completion: completion.usage?.completion_tokens || 0,
-        total: completion.usage?.total_tokens || 0,
-      },
-      contextFound: searchResults.results.length > 0,
-      timestamp: new Date().toISOString(),
-    }).catch(console.error);
-    
-    // Return JSON response - this is what useChat expects
-    return res.status(200).json({
+    // Try different response formats to see what works
+    const response = {
+      id: Date.now().toString(),
+      role: 'assistant',
       content: responseContent,
-    });
+    };
+    
+    console.log('Full response object:', response);
+    
+    // Return the response
+    return res.status(200).json(response);
     
   } catch (error) {
-    console.error('Chat endpoint error:', error);
+    console.error('=== CHAT ERROR ===');
+    console.error('Error:', error);
+    console.error('Stack:', error instanceof Error ? error.stack : 'No stack');
     
     return res.status(500).json({
       error: 'Failed to process chat request',
