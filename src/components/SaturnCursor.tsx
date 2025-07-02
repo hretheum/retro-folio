@@ -130,7 +130,7 @@ export default function SaturnCursor() {
           width: 100vw;
           height: 100vh;
           pointer-events: none;
-          z-index: 9999;
+          z-index: 99999;
           overflow: hidden;
         }
 
@@ -139,7 +139,7 @@ export default function SaturnCursor() {
           width: 40px;
           height: 40px;
           pointer-events: none;
-          z-index: 10000;
+          z-index: 100000;
           transition: transform 0.1s ease-out;
           animation: saturn-float 3s ease-in-out infinite;
         }
@@ -197,7 +197,7 @@ export default function SaturnCursor() {
             0 0 8px rgba(255, 215, 0, 0.6),
             0 0 12px rgba(255, 215, 0, 0.4);
           animation: star-twinkle 0.5s ease-in-out infinite alternate;
-          z-index: 9999;
+          z-index: 99999;
         }
 
         @keyframes saturn-float {
