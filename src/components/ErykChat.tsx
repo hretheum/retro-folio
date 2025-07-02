@@ -2,8 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Sparkles, X, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { useChat } from 'ai/react';
 import './ErykChat.css';
+
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt?: Date;
+}
 
 interface ErykChatProps {
   isOpen?: boolean;
@@ -16,50 +22,71 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
   const inputRef = useRef<HTMLInputElement>(null);
   const [sessionId] = useState(() => `session-${Date.now()}`);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, 'helpful' | 'not_helpful'>>({});
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Hi! I\'m Eryk AI. You can ask me about my experience, technology projects, leadership philosophy, or anything else related to my career. How can I help you?',
+      createdAt: new Date(),
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: '/api/ai/chat',
-    body: {
-      sessionId,
-    },
-    initialMessages: [
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: 'Hi! I\'m Eryk AI. You can ask me about my experience, technology projects, leadership philosophy, or anything else related to my career. How can I help you?',
-      },
-    ],
-    onError: (error) => {
-      console.error('=== useChat ERROR ===');
-      console.error('Error object:', error);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-      console.error('Error cause:', error.cause);
-      console.error('===================');
-    },
-    onResponse: async (response) => {
-      console.log('=== useChat RESPONSE ===');
-      console.log('Response:', response);
-      console.log('Status:', response.status);
-      console.log('Headers:', Object.fromEntries(response.headers.entries()));
-      console.log('URL:', response.url);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: input,
+      createdAt: new Date(),
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+          sessionId,
+        }),
+      });
       
-      // Try to read the response body
-      try {
-        const clonedResponse = response.clone();
-        const text = await clonedResponse.text();
-        console.log('Response body (first 200 chars):', text.substring(0, 200));
-      } catch (e) {
-        console.log('Could not read response body:', e);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      console.log('===================');
-    },
-    onFinish: (message) => {
-      console.log('=== Message finished ===');
-      console.log('Message:', message);
-      console.log('===================');
-    },
-  });
+      
+      const data = await response.json();
+      
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: data.content,
+        createdAt: new Date(),
+      };
+      
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (err) {
+      console.error('Chat error:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Auto-scroll to bottom
   useEffect(() => {
@@ -80,12 +107,6 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
       localStorage.setItem(`eryk-chat-${sessionId}`, JSON.stringify(chatHistory));
     }
   }, [messages, sessionId]);
-  
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-    handleSubmit(e);
-  };
   
   const handleFeedback = async (messageId: string, feedback: 'helpful' | 'not_helpful') => {
     if (feedbackGiven[messageId]) return;
@@ -228,7 +249,7 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
             </div>
             
             {/* Input */}
-            <form onSubmit={handleFormSubmit} className="eryk-chat-input">
+            <form onSubmit={handleSubmit} className="eryk-chat-input">
               <input
                 ref={inputRef}
                 type="text"
