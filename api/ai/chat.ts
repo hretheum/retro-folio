@@ -16,28 +16,18 @@ export default async function handler(req, res) {
     const lastMessage = messages[messages.length - 1];
     const responseText = `Test response: "${lastMessage?.content || 'no content'}"`;
     
-    // Set headers for SSE
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+    console.log('[CHAT] Sending JSON response');
+    
+    // Return simple JSON like portfolio does
+    return res.status(200).json({
+      content: responseText
     });
-    
-    // useChat expects this exact format for streaming
-    // Send the entire response as one chunk
-    res.write(`data: ${JSON.stringify(responseText)}\n\n`);
-    
-    // Send the final done message
-    res.write('data: [DONE]\n\n');
-    res.end();
     
   } catch (error) {
     console.error('[CHAT] Error:', error);
-    if (!res.headersSent) {
-      return res.status(500).json({
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 }
