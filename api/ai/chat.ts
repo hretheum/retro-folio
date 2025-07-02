@@ -38,8 +38,10 @@ interface Message {
 }
 
 function formatProjectResponse(projectName: string, achievements: string[], isPolish: boolean): string {
-  const formattedAchievements = achievements
+  // Limit to top 4 achievements per project for better readability
+  const topAchievements = achievements
     .filter(a => a.length > 10)
+    .slice(0, 4)
     .map(a => `• ${a.trim()}`)
     .join('\n');
   
@@ -47,60 +49,83 @@ function formatProjectResponse(projectName: string, achievements: string[], isPo
   
   return `**[Projekt: ${projectName}]**
 
-${formattedAchievements}
+${topAchievements}
 
 <button-prompt="${projectName}">${tellMeMore} →</button-prompt>`;
 }
 
-function extractProjectInfo(context: string): { name: string; achievements: string[] } | null {
-  // Try to extract project name and achievements from context
+interface ProjectData {
+  name: string;
+  role?: string;
+  achievements: string[];
+}
+
+function extractMultipleProjects(context: string): ProjectData[] {
   const lines = context.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const projects: ProjectData[] = [];
   
-  // Project name mapping
-  const projectMappings: Record<string, string> = {
-    'volkswagen digital': 'Volkswagen Digital',
-    'polsat box go': 'Polsat Box Go',
-    'tvp vod': 'TVP VOD',
-    'ing bank': 'ING Bank',
-    'hireverse': 'Hireverse',
-    'allegro': 'Allegro',
-    'design system': 'Design System'
-  };
+  // Known project patterns with company names and roles
+  const projectPatterns = [
+    /^(.*?)\s+(Senior Product Designer|Product Designer|Design Lead|Lead Designer|Consultant|Product Design Consultant)$/i,
+    /^(Volkswagen Digital|Polsat Box Go|TVP VOD|ING Bank|Hireverse|Allegro|mBank|Revolut)\s*(.*)$/i
+  ];
   
-  let projectName = '';
-  const achievements: string[] = [];
-  const seenAchievements = new Set<string>(); // To avoid duplicates
+  let currentProject: ProjectData | null = null;
   
   for (const line of lines) {
-    const lineLower = line.toLowerCase();
+    // Check if this line is a new project header
+    let isNewProject = false;
     
-    // Check if line contains project name
-    if (!projectName) {
-      for (const [pattern, name] of Object.entries(projectMappings)) {
-        if (lineLower.includes(pattern)) {
-          projectName = name;
-          break;
+    for (const pattern of projectPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        // Save previous project if exists
+        if (currentProject && currentProject.achievements.length > 0) {
+          projects.push(currentProject);
         }
+        
+        // Start new project
+        const companyName = match[1].trim();
+        const role = match[2] ? match[2].trim() : '';
+        
+        currentProject = {
+          name: companyName,
+          role: role || undefined,
+          achievements: []
+        };
+        isNewProject = true;
+        break;
       }
     }
     
-    // Check if line describes an achievement
-    if (line.match(/\d+|%|scaled|improved|created|built|reduced|designed|implemented|developed|led|managed/i)) {
-      // Clean up the line and avoid duplicates
-      const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
-      if (cleanLine.length > 20 && !seenAchievements.has(cleanLine.toLowerCase())) {
-        achievements.push(cleanLine);
-        seenAchievements.add(cleanLine.toLowerCase());
+    // If not a new project header and we have a current project, check if it's an achievement
+    if (!isNewProject && currentProject) {
+      // Skip lines that are just project names repeated
+      if (line.toLowerCase().includes(currentProject.name.toLowerCase()) && line.length < 50) {
+        continue;
+      }
+      
+      // Check if line describes an achievement
+      if (line.length > 30 && (
+        line.match(/\d+|%|scaled|improved|created|built|reduced|designed|implemented|developed|led|managed|osiągnęliśmy|zaprojektowałem|stworzyłem|wprowadziłem|zbudowałem/i) ||
+        line.includes('•') ||
+        line.includes('-')
+      )) {
+        // Clean up the line
+        const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
+        if (cleanLine.length > 20) {
+          currentProject.achievements.push(cleanLine);
+        }
       }
     }
   }
   
-  // Limit achievements to the most relevant ones
-  const topAchievements = achievements.slice(0, 5);
+  // Don't forget the last project
+  if (currentProject && currentProject.achievements.length > 0) {
+    projects.push(currentProject);
+  }
   
-  return projectName && topAchievements.length > 0 
-    ? { name: projectName, achievements: topAchievements } 
-    : null;
+  return projects;
 }
 
 function generateResponse(userMessage: string, context: string, messages: Message[]): string {
@@ -121,18 +146,24 @@ function generateResponse(userMessage: string, context: string, messages: Messag
     
     const cleanContext = contextLines.join('\n\n');
     
-    // Try to extract project information for better formatting
-    const projectInfo = extractProjectInfo(context);
+    // Try to extract multiple projects for better formatting
+    const projects = extractMultipleProjects(context);
     
-    // For questions about specific projects
-    if (projectInfo) {
-      const response = formatProjectResponse(projectInfo.name, projectInfo.achievements, isPolish);
-      
+    // If we found projects, format them properly
+    if (projects.length > 0) {
       const intro = isPolish 
-        ? 'Oto czym się zajmowałem:\n\n'
-        : 'Here\'s what I worked on:\n\n';
+        ? 'Oto moje doświadczenie:\n\n'
+        : "Here's my experience:\n\n";
       
-      return intro + response;
+      const projectResponses = projects.map(project => {
+        const projectTitle = project.role 
+          ? `${project.name} - ${project.role}`
+          : project.name;
+        
+        return formatProjectResponse(projectTitle, project.achievements, isPolish);
+      }).join('\n\n');
+      
+      return intro + projectResponses;
     }
     
     // For questions about Hireverse specifically
