@@ -29,6 +29,7 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
         content: 'Hi! I\'m Eryk AI. You can ask me about my experience, technology projects, leadership philosophy, or anything else related to my career. How can I help you?',
       },
     ],
+    streamMode: 'text',
     onError: (error) => {
       console.error('useChat error:', error);
       console.error('Error details:', {
@@ -41,6 +42,9 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
       console.log('useChat response:', response);
       console.log('Response status:', response.status);
       console.log('Response headers:', response.headers);
+    },
+    onFinish: (message) => {
+      console.log('Message finished:', message);
     },
   });
   

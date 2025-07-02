@@ -1,61 +1,98 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { openai, AI_MODELS } from '../../lib/openai';
+import { semanticSearch } from '../../lib/semantic-search';
+import { buildMessages } from '../../lib/chat-prompts';
+import { logChatInteraction } from '../../lib/analytics';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('=== CHAT ENDPOINT DEBUG ===');
-  console.log('Method:', req.method);
-  console.log('Headers:', req.headers);
-  console.log('Body:', JSON.stringify(req.body, null, 2));
-  
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { messages } = req.body;
+    const { messages, sessionId = 'anonymous' } = req.body;
     
-    console.log('Messages:', messages);
-    
-    // Validate messages
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      console.error('No messages provided');
       return res.status(400).json({ error: 'Messages array is required' });
     }
     
-    // Get the last user message
     const lastMessage = messages[messages.length - 1];
-    console.log('Last message:', lastMessage);
-    
     if (!lastMessage || lastMessage.role !== 'user') {
-      console.error('Last message is not from user');
       return res.status(400).json({ error: 'Last message must be from user' });
     }
     
-    // For now, just return a simple response to test
-    const responseContent = `Test response: You said "${lastMessage.content}". This is a test from Eryk AI!`;
+    const startTime = Date.now();
     
-    console.log('Sending response:', responseContent);
+    // Search for relevant context
+    const searchResults = await semanticSearch({
+      query: lastMessage.content,
+      topK: 5,
+      minScore: 0.7,
+    });
     
-    // Try different response formats to see what works
-    const response = {
-      id: Date.now().toString(),
-      role: 'assistant',
-      content: responseContent,
-    };
+    // Build messages for OpenAI
+    const previousMessages = messages.slice(0, -1);
+    const openAIMessages = buildMessages(
+      lastMessage.content,
+      searchResults.context,
+      previousMessages
+    );
     
-    console.log('Full response object:', response);
+    // Create streaming response
+    const stream = await openai.chat.completions.create({
+      model: AI_MODELS.chat,
+      messages: openAIMessages,
+      temperature: 0.7,
+      max_tokens: 1000,
+      stream: true,
+    });
     
-    // Return the response
-    return res.status(200).json(response);
+    // Set headers for Server-Sent Events
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-Accel-Buffering', 'no');
+    
+    // Send the stream
+    let fullResponse = '';
+    
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      if (content) {
+        fullResponse += content;
+        // Send just the content string, not JSON
+        res.write(`data: ${content}\n\n`);
+      }
+    }
+    
+    // Send [DONE] to signal completion
+    res.write('data: [DONE]\n\n');
+    res.end();
+    
+    // Log interaction
+    const responseTime = Date.now() - startTime;
+    logChatInteraction({
+      sessionId,
+      query: lastMessage.content,
+      responseTime,
+      tokenUsage: {
+        prompt: 0,
+        completion: 0,
+        total: 0,
+      },
+      contextFound: searchResults.results.length > 0,
+      timestamp: new Date().toISOString(),
+    }).catch(console.error);
     
   } catch (error) {
-    console.error('=== CHAT ERROR ===');
-    console.error('Error:', error);
-    console.error('Stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('Chat endpoint error:', error);
     
-    return res.status(500).json({
-      error: 'Failed to process chat request',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: 'Failed to process chat request',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 }
