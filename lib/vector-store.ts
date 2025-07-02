@@ -27,11 +27,10 @@ export class VectorStore {
 
   // Initialize or reinitialize the index
   private async initializeIndex(dimension: number) {
-    this.index = new LocalIndex({
-      dimensions: dimension,
-      metric: 'cosine',
-    });
-    await this.index.createIndex();
+    this.index = new LocalIndex(`.vectra-index-${dimension}`);
+    if (!(await this.index.isIndexCreated())) {
+      await this.index.createIndex();
+    }
   }
 
   // Add embeddings to the store
@@ -69,7 +68,10 @@ export class VectorStore {
     }
 
     // Query the index
-    const results = await this.index.queryItems(queryEmbedding, topK);
+    const results = await this.index.queryItems(queryEmbedding, topK, (item: any) => {
+      // Optional filter function
+      return true;
+    });
 
     // Map results to chunks with filtering
     const searchResults: SearchResult[] = [];
@@ -111,9 +113,11 @@ export class VectorStore {
   // Clear all vectors
   async clear(): Promise<void> {
     if (this.index) {
-      // Recreate index
-      const dimension = this.index.dimensions;
-      await this.initializeIndex(dimension);
+      // Clear by removing all items
+      const items = await this.index.listItems();
+      for (const item of items) {
+        await this.index.deleteItem(item.id);
+      }
     }
     this.chunks.clear();
     this.cancelAutoSave();
@@ -190,7 +194,7 @@ export class VectorStore {
 
       if (!data) return false;
 
-      const storeData = JSON.parse(data);
+      const storeData = JSON.parse(String(data));
       const chunks: [string, EmbeddedChunk][] = storeData.chunks;
 
       // Clear existing data

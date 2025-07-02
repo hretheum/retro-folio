@@ -156,18 +156,18 @@ export async function getMetrics(): Promise<ChatMetrics> {
     });
     
     const topQueries = topQueriesRaw.map(item => ({
-      query: item.value,
-      count: item.score,
+      query: String(item.value),
+      count: parseInt(String(item.score)),
     }));
     
     // Calculate satisfaction rate
-    const helpful = parseInt(metrics.feedback_helpful || '0');
-    const notHelpful = parseInt(metrics.feedback_not_helpful || '0');
+    const helpful = parseInt(String(metrics.feedback_helpful || '0'));
+    const notHelpful = parseInt(String(metrics.feedback_not_helpful || '0'));
     const totalFeedback = helpful + notHelpful;
     const satisfactionRate = totalFeedback > 0 ? helpful / totalFeedback : 0;
     
     // Calculate daily cost
-    const totalTokens = parseFloat(metrics.totalTokens || '0');
+    const totalTokens = parseFloat(String(metrics.totalTokens || '0'));
     const promptTokens = totalTokens * 0.7; // Rough estimate
     const completionTokens = totalTokens * 0.3;
     
@@ -176,8 +176,8 @@ export async function getMetrics(): Promise<ChatMetrics> {
       (completionTokens / 1000) * COST_PER_1K_COMPLETION_TOKENS;
     
     // Calculate error rate
-    const totalQueries = parseInt(metrics.totalQueries || '0');
-    const errors = parseInt(metrics.errors || '0');
+    const totalQueries = parseInt(String(metrics.totalQueries || '0'));
+    const errors = parseInt(String(metrics.errors || '0'));
     const errorRate = totalQueries > 0 ? errors / totalQueries : 0;
     
     await client.disconnect();
@@ -189,8 +189,8 @@ export async function getMetrics(): Promise<ChatMetrics> {
       satisfactionRate,
       topQueries,
       errorRate,
-      activeUsers,
-      p95ResponseTime,
+      activeUsers: parseInt(String(activeUsers)),
+      p95ResponseTime: parseInt(String(p95ResponseTime)),
     };
   } catch (error) {
     console.error('Failed to get metrics:', error);

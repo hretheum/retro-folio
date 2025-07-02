@@ -1,10 +1,10 @@
-import { OpenAIStream, StreamingTextResponse } from 'ai';
+import { streamText } from 'ai';
+import { openai as openaiProvider } from 'ai/openai';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { openai, AI_MODELS } from '../../lib/openai';
 import { semanticSearch } from '../../lib/semantic-search';
 import { buildMessages } from '../../lib/chat-prompts';
 import { logChatInteraction } from '../../lib/analytics';
-import type { OpenAI } from 'openai';
 
 // Rate limiting
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
@@ -104,27 +104,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       previousMessages
     );
     
-    // Create OpenAI stream
-    const response = await openai.chat.completions.create({
-      model: AI_MODELS.chat,
-      messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
-      stream: true,
+    // Create stream with new API
+    const result = await streamText({
+      model: openaiProvider(AI_MODELS.chat),
+      messages: messages as any,
       temperature: 0.7,
-      max_tokens: 1000,
-    });
-    
-    // Convert to stream
-    const stream = OpenAIStream(response, {
-      onStart: async () => {
-        console.log('Stream started');
-      },
-      onToken: async () => {
-        // Could track tokens here if needed
-      },
-      onCompletion: async (completion) => {
+      maxTokens: 1000,
+      onFinish: async ({ text, usage }) => {
         // Log completion
         const responseTime = Date.now() - startTime;
-        const tokenUsage = estimateTokenUsage(messages, completion);
+        const tokenUsage = {
+          prompt: usage?.promptTokens || 0,
+          completion: usage?.completionTokens || 0,
+          total: usage?.totalTokens || 0,
+        };
         
         await logChatInteraction({
           sessionId,
@@ -138,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     
     // Return streaming response
-    return new StreamingTextResponse(stream);
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error('Chat endpoint error:', error);
     

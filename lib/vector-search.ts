@@ -28,7 +28,7 @@ export async function loadEmbeddings(): Promise<boolean> {
     
     if (!data) return false;
     
-    const embeddingsData = JSON.parse(data);
+    const embeddingsData = JSON.parse(String(data));
     const embeddings: EmbeddedChunk[] = embeddingsData.embeddings;
     
     if (embeddings.length > 0) {

@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (cached) {
           await client.disconnect();
           return res.status(200).json({
-            items: JSON.parse(cached),
+            items: JSON.parse(String(cached)),
             cached: true,
           });
         }

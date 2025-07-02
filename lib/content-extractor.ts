@@ -129,12 +129,13 @@ export async function fetchAllCMSContent(): Promise<ExtractedContent[]> {
 
 // Normalize and prepare content for processing
 export function normalizeContent(content: ExtractedContent[]): ExtractedContent[] {
-  return content.map(item => ({
-    ...item,
+  return content.map(item => {
     // Ensure content is not empty
-    content: item.content || item.title,
-    // Clean up text
-    title: item.title.trim(),
-    content: item.content.trim().replace(/\s+/g, ' '),
-  })).filter(item => item.content.length > 10); // Filter out too short content
+    const cleanContent = (item.content || item.title).trim().replace(/\s+/g, ' ');
+    return {
+      ...item,
+      title: item.title.trim(),
+      content: cleanContent,
+    };
+  }).filter(item => item.content.length > 10); // Filter out too short content
 }
