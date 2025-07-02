@@ -39,6 +39,15 @@ body:not(.admin-page) {
   cursor: none; /* Hide default cursor for Saturn effect */
 }
 
+/* Ensure Saturn cursor is above everything on login page */
+.login-page .saturn-cursor {
+  z-index: 999999 !important;
+}
+
+.login-page .saturn-ring {
+  z-index: 999999 !important;
+}
+
 /* Admin page should always show normal cursor */
 .admin-page {
   cursor: auto !important;

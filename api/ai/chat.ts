@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { openai, AI_MODELS } from '../../lib/openai';
+import { openai as openaiClient, AI_MODELS } from '../../lib/openai';
 import { semanticSearch } from '../../lib/semantic-search';
 import { buildMessages } from '../../lib/chat-prompts';
 import { logChatInteraction } from '../../lib/analytics';
 import type { ChatMessage } from '../../lib/chat-prompts';
-import { OpenAIStream, StreamingTextResponse } from 'ai';
+import { streamText } from 'ai';
+import { openai } from '@ai-sdk/openai';
 
 // Rate limiting
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
@@ -112,21 +113,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       previousMessages
     );
     
-    // Create chat completion with streaming
-    const response = await openai.chat.completions.create({
-      model: AI_MODELS.chat,
+    // Get API key
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY is not configured');
+    }
+
+    // Create streaming response
+    const result = await streamText({
+      model: openai(AI_MODELS.chat, { apiKey }),
       messages: openAIMessages as any,
       temperature: 0.7,
-      max_tokens: 1000,
-      stream: true,
-    });
-
-    // Convert the response into a friendly text-stream
-    const stream = OpenAIStream(response, {
-      onCompletion: async (completion: string) => {
+      maxTokens: 1000,
+      onFinish: async ({ text }) => {
         // Log interaction after completion
         const responseTime = Date.now() - startTime;
-        const tokenUsage = estimateTokenUsage(openAIMessages, completion);
+        const tokenUsage = estimateTokenUsage(openAIMessages, text);
         
         await logChatInteraction({
           sessionId,
@@ -139,8 +141,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
 
-    // Return a StreamingTextResponse, which can be consumed by the Vercel AI SDK on the client
-    return new StreamingTextResponse(stream);
+    // Return the stream as response
+    return result.toDataStreamResponse();
   } catch (error) {
     console.error('Chat endpoint error:', error);
     

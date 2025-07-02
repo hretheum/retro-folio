@@ -95,7 +95,7 @@ export function LoginPage({ allowedEmails = [] }: LoginPageProps) {
   }, [isAuthenticated, navigate]);
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+    <div className="login-page min-h-screen bg-black flex items-center justify-center p-4">
       <div className="retro-main-container" style={{ maxWidth: '400px', width: '100%' }}>
         <header className="retro-header">
           <h1 className="retro-title">🔐 Admin Login 🔐</h1>
