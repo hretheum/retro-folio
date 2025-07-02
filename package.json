@@ -19,14 +19,17 @@
     "@react-three/fiber": "^8.15.19",
     "@vercel/kv": "^2.0.0",
     "@vercel/node": "^3.0.0",
+    "ai": "^4.3.16",
     "framer-motion": "^11.0.3",
     "leva": "^0.9.35",
     "lucide-react": "^0.344.0",
+    "openai": "^5.8.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.20.1",
     "redis": "^5.5.6",
-    "three": "^0.170.0"
+    "three": "^0.170.0",
+    "vectra": "^0.11.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

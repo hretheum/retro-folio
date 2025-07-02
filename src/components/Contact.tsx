@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Linkedin, Github, ExternalLink, MessageSquare, Sparkles, Globe, Twitter } from 'lucide-react';
 import { useContactContent } from '../hooks/useContactContent';
+import { ErykChat } from './ErykChat';
 
 export default function Contact() {
   const [showAI, setShowAI] = useState(false);
@@ -164,33 +165,8 @@ export default function Contact() {
         </motion.div>
       </div>
 
-      {/* AI Chat Modal Placeholder */}
-      {showAI && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6"
-          onClick={() => setShowAI(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-lg w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-2xl font-bold text-white mb-4">{content.aiModalTitle}</h3>
-            <p className="text-gray-300 mb-6">
-              {content.aiModalDescription}
-            </p>
-            <button
-              onClick={() => setShowAI(false)}
-              className="px-6 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
-            >
-              {content.aiModalButtonText}
-            </button>
-          </motion.div>
-        </motion.div>
-      )}
+      {/* AI Chat Modal */}
+      <ErykChat isOpen={showAI} onClose={() => setShowAI(false)} />
     </section>
   );
 }
