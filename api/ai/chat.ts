@@ -1,7 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { StreamingTextResponse } from 'ai';
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   console.log('[CHAT] Endpoint called');
   
   if (req.method !== 'POST') {
@@ -17,25 +14,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     
     const lastMessage = messages[messages.length - 1];
-    const response = `Test response: "${lastMessage?.content || 'no content'}"`;
+    const responseText = `Test response: "${lastMessage?.content || 'no content'}"`;
     
-    // Create a simple readable stream
-    const stream = new ReadableStream({
-      start(controller) {
-        // Send the response text
-        controller.enqueue(new TextEncoder().encode(response));
-        controller.close();
-      },
+    // Set headers for SSE
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
     });
     
-    // Return StreamingTextResponse which handles all the SSE formatting
-    return new StreamingTextResponse(stream);
+    // useChat expects this exact format for streaming
+    // Send the entire response as one chunk
+    res.write(`data: ${JSON.stringify(responseText)}\n\n`);
+    
+    // Send the final done message
+    res.write('data: [DONE]\n\n');
+    res.end();
     
   } catch (error) {
     console.error('[CHAT] Error:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   }
 }
