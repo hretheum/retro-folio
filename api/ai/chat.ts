@@ -5,6 +5,12 @@ import { buildMessages } from '../../lib/chat-prompts';
 import { logChatInteraction } from '../../lib/analytics';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log('[CHAT] Request received:', {
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+  });
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
