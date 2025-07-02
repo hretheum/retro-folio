@@ -42,20 +42,33 @@ export default function Timeline() {
     if (!loading && contentItems.length > 0) {
       const publishedEvents = contentItems
         .filter(item => item.status === 'published')
-        .map((item, index) => ({
-          id: item.id,
-          title: item.title,
-          year: item.data.year,
-          description: item.data.description,
-          detail: item.data.detail,
-          icon: item.data.icon || 'calendar',
-          color: item.data.color || 'from-blue-500 to-blue-600',
-          position: index % 2 === 0 ? 'left' : 'right' as 'left' | 'right',
-          createdAt: new Date(item.createdAt),
-          updatedAt: new Date(item.updatedAt)
-        }))
+        .map((item, index) => {
+          // Walidacja danych
+          if (!item.data) {
+            console.error('🚨 Timeline: Item missing data:', item);
+            return null;
+          }
+          
+          return {
+            id: item.id,
+            title: item.title || 'Untitled',
+            year: item.data.year || '2000',
+            description: item.data.description || '',
+            detail: item.data.detail || '',
+            icon: item.data.icon || 'calendar',
+            color: item.data.color || 'from-blue-500 to-blue-600',
+            position: index % 2 === 0 ? 'left' : 'right' as 'left' | 'right',
+            createdAt: new Date(item.createdAt),
+            updatedAt: new Date(item.updatedAt)
+          };
+        })
+        .filter(event => event !== null)
         .sort((a, b) => {
           const getYear = (yearStr: string) => {
+            if (!yearStr || typeof yearStr !== 'string') {
+              console.warn('🚨 Timeline: Invalid year string:', yearStr);
+              return 0;
+            }
             const match = yearStr.match(/(\d{4})/);
             return match ? parseInt(match[1]) : 0;
           };
