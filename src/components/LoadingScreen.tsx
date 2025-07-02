@@ -6,6 +6,13 @@ interface LoadingScreenProps {
 }
 
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ isLoaded }) => {
+  React.useEffect(() => {
+    console.log('🔄 LoadingScreen mounted, isLoaded:', isLoaded);
+    return () => {
+      console.log('🚪 LoadingScreen unmounting');
+    };
+  }, [isLoaded]);
+  
   return (
     <AnimatePresence>
       {!isLoaded && (
