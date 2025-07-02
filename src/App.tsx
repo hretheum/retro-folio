@@ -215,6 +215,7 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route path="*" element={<MainApp />} />
         </Routes>
       </Router>
     </AuthProvider>
