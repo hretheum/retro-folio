@@ -104,47 +104,6 @@ export default function Leadership() {
           ))}
         </div>
 
-        {/* Interactive Team Growth Visualization */}
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.2, duration: 0.8 }}
-          className="mt-20 text-center"
-        >
-          <h3 className="text-3xl font-bold text-white mb-8">{content.scalingTitle}</h3>
-          <div className="bg-gray-900/30 rounded-2xl p-8 border border-gray-800">
-            <div className="flex items-center justify-between max-w-4xl mx-auto">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold mb-2">
-                  0
-                </div>
-                <div className="text-sm text-gray-400">Start</div>
-              </div>
-              
-              <div className="flex-1 h-0.5 bg-gradient-to-r from-blue-500 to-blue-400 mx-4" />
-              
-              <div className="text-center">
-                <div className="w-12 h-12 bg-blue-400 rounded-full flex items-center justify-center text-white font-bold mb-2">
-                  5
-                </div>
-                <div className="text-sm text-gray-400">Month 12</div>
-              </div>
-              
-              <div className="flex-1 h-0.5 bg-gradient-to-r from-blue-400 to-blue-300 mx-4" />
-              
-              <div className="text-center">
-                <div className="w-12 h-12 bg-blue-300 rounded-full flex items-center justify-center text-white font-bold mb-2">
-                  25
-                </div>
-                <div className="text-sm text-gray-400">Year 5</div>
-              </div>
-            </div>
-            <p className="text-gray-400 mt-6">
-              {content.scalingDescription}
-            </p>
-          </div>
-        </motion.div>
-
         {/* Let's Talk Section */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}

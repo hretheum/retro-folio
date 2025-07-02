@@ -54,8 +54,6 @@ export default function LeadershipFields() {
     await updateTextContent({
       mainTitle: tempContent.mainTitle,
       mainDescription: tempContent.mainDescription,
-      scalingTitle: tempContent.scalingTitle,
-      scalingDescription: tempContent.scalingDescription,
       letsTalkTitle: tempContent.letsTalkTitle,
       letsTalkDescription: tempContent.letsTalkDescription,
       letsTalkCTA: tempContent.letsTalkCTA
@@ -175,24 +173,6 @@ export default function LeadershipFields() {
                 value={tempContent.mainDescription}
                 onChange={(e) => setTempContent({ ...tempContent, mainDescription: e.target.value })}
                 className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded text-white h-24"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Scaling Title</label>
-              <input
-                type="text"
-                value={tempContent.scalingTitle}
-                onChange={(e) => setTempContent({ ...tempContent, scalingTitle: e.target.value })}
-                className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Scaling Description</label>
-              <input
-                type="text"
-                value={tempContent.scalingDescription}
-                onChange={(e) => setTempContent({ ...tempContent, scalingDescription: e.target.value })}
-                className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded text-white"
               />
             </div>
             <div>

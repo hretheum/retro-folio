@@ -20,8 +20,6 @@ interface LeadershipPillar {
 interface LeadershipContent {
   mainTitle: string;
   mainDescription: string;
-  scalingTitle: string;
-  scalingDescription: string;
   letsTalkTitle: string;
   letsTalkDescription: string;
   letsTalkCTA: string;
@@ -32,8 +30,6 @@ interface LeadershipContent {
 const defaultContent: LeadershipContent = {
   mainTitle: "Building Teams That Ship",
   mainDescription: "I don't just manage designers - I build self-organizing teams that deliver. 20+ years of scaling design orgs from 0 to 25+, implementing ways of working that actually work, and bridging the gap between design dreams and agile reality.",
-  scalingTitle: "Scaling Framework in Action",
-  scalingDescription: "The ING Experience: Building Europe's largest design chapter",
   letsTalkTitle: "Let's Talk Leadership",
   letsTalkDescription: "Whether you're building your first design team or scaling beyond 50, I've been there. Let's discuss how to create teams that not only deliver but thrive.",
   letsTalkCTA: "Schedule a Leadership Chat",
