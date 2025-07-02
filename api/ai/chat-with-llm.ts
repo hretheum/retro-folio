@@ -72,25 +72,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Search Pinecone for relevant context
     let context = '';
     try {
-      // Enhance search query based on user intent
-      let searchQuery = lastMessage.content;
-      const lowerContent = lastMessage.content.toLowerCase();
+      // Use the original query - let Pinecone handle semantic search
+      const searchQuery = lastMessage.content;
       
-      // Map specific queries to broader searches
-      if (lowerContent.includes('bank') || lowerContent.includes('finanse') || lowerContent.includes('finance')) {
-        searchQuery = 'bank finance fintech mBank Revolut ING financial services payments';
-      } else if (lowerContent.includes('projekt') || lowerContent.includes('project') || 
-                 lowerContent.includes('doświadczenie') || lowerContent.includes('experience')) {
-        searchQuery = 'projects experience portfolio Volkswagen Revolut Spotify mBank ING Polsat Allegro GitLab design lead senior';
-      } else if (lowerContent.includes('wszystkie') || lowerContent.includes('all') || 
-                 lowerContent.includes('inne') || lowerContent.includes('other')) {
-        searchQuery = 'Volkswagen Revolut Spotify mBank ING Polsat Allegro GitLab Cognition Labs Hireverse design system robo-advisor';
-      }
+      // For very short queries, add context
+      const enhancedQuery = searchQuery.split(' ').length < 3 
+        ? `${searchQuery} projects experience work` 
+        : searchQuery;
       
-      console.log('[CHAT-LLM] Search query:', searchQuery);
+      console.log('[CHAT-LLM] Search query:', enhancedQuery);
       
       // Check cache first
-      const cacheKey = searchQuery.toLowerCase();
+      const cacheKey = enhancedQuery.toLowerCase();
       const cached = searchCache.get(cacheKey);
       let searchResults;
       
@@ -98,9 +91,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log('[CHAT-LLM] Using cached results');
         searchResults = cached.results;
       } else {
-        searchResults = await hybridSearchPinecone(searchQuery, {
-          topK: 15, // Increase even more for better variety
+        searchResults = await hybridSearchPinecone(enhancedQuery, {
+          topK: 20, // Get many results - let LLM decide what's relevant
           namespace: 'production',
+          vectorWeight: 0.7 // Default weight for semantic search
         });
         
         // Cache the results
@@ -153,11 +147,16 @@ ${context}
 
 USER QUESTION: ${lastMessage.content}
 
-IMPORTANT: 
-- If user asks about banks/finance, show ALL financial projects (mBank, Revolut, ING, etc.)
-- If user asks about projects in general, show 5-8 diverse projects
-- Create SEPARATE formatted blocks for EACH company/project found in the context
-- Do NOT filter or limit to just one project unless user asks for specific company` }
+IMPORTANT INSTRUCTIONS:
+1. Analyze user's intent:
+   - "banki" / "banks" → Show ALL banking/fintech projects found in context
+   - "projekty" / "projects" → Show diverse selection of 5-8 projects
+   - "inne" / "other" / "więcej" / "more" → Show additional projects not yet shown
+   
+2. ALWAYS create SEPARATE blocks for EACH company found in context
+3. Do NOT arbitrarily limit results - if context has 5 banks, show all 5
+4. Group similar projects (e.g., all fintech together) but still show each separately
+5. If user asks about specific domain (finance, design systems, etc.), prioritize those` }
     ];
     
     // Get response from OpenAI
