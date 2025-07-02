@@ -3,13 +3,15 @@ import { fetchAllCMSContent, normalizeContent } from '../../lib/content-extracto
 import { createClient } from 'redis';
 
 // Cache configuration
-const CACHE_TTL = 3600; // 1 hour in seconds
+const CACHE_TTL = 300; // 5 minutes in seconds
 const CACHE_KEY = 'ai:extracted-content';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+  
+  const forceRefresh = req.query.refresh === 'true';
 
   try {
     let extractedContent;
@@ -20,14 +22,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const client = createClient({ url: redisUrl });
       await client.connect();
       
-      // Check cache
-      const cached = await client.get(CACHE_KEY);
-      if (cached) {
-        await client.disconnect();
-        return res.status(200).json({
-          items: JSON.parse(cached),
-          cached: true,
-        });
+      // Check cache (unless force refresh)
+      if (!forceRefresh) {
+        const cached = await client.get(CACHE_KEY);
+        if (cached) {
+          await client.disconnect();
+          return res.status(200).json({
+            items: JSON.parse(cached),
+            cached: true,
+          });
+        }
       }
       
       // Fetch fresh content
