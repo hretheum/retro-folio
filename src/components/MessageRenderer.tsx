@@ -9,14 +9,28 @@ interface MessageRendererProps {
 export function MessageRenderer({ content, onPromptClick }: MessageRendererProps) {
   // Parse the content to handle markdown and special button syntax
   const renderContent = () => {
-    // Split content by lines to process each part
     const lines = content.split('\n');
     const elements: React.ReactNode[] = [];
+    let currentList: React.ReactNode[] = [];
+    let inList = false;
+    
+    const flushList = () => {
+      if (currentList.length > 0) {
+        elements.push(
+          <ul key={`list-${elements.length}`} className="list-none space-y-2 my-3">
+            {currentList}
+          </ul>
+        );
+        currentList = [];
+        inList = false;
+      }
+    };
     
     lines.forEach((line, index) => {
       // Handle button prompts: <button-prompt="Project Name">Tell me more →</button-prompt>
       const buttonMatch = line.match(/<button-prompt="([^"]+)">([^<]+)<\/button-prompt>/);
       if (buttonMatch) {
+        flushList();
         const [, projectName, buttonText] = buttonMatch;
         elements.push(
           <button
@@ -32,25 +46,53 @@ export function MessageRenderer({ content, onPromptClick }: MessageRendererProps
         return;
       }
       
-      // Handle bold text: **[Projekt: Name]**
-      let processedLine = line.replace(/\*\*\[([^\]]+)\]\*\*/g, '<strong class="text-blue-400 text-lg">[$1]</strong>');
-      processedLine = processedLine.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-      
-      // Handle bullet points
-      if (line.trim().startsWith('•')) {
+      // Handle project headers: **[Projekt: Name]**
+      const projectMatch = line.match(/\*\*\[([^\]]+)\]\*\*/);
+      if (projectMatch) {
+        flushList();
         elements.push(
-          <li key={`li-${index}`} className="ml-4 mb-1" dangerouslySetInnerHTML={{ __html: processedLine }} />
+          <h3 key={`header-${index}`} className="text-blue-400 text-lg font-semibold mb-3 mt-4">
+            [{projectMatch[1]}]
+          </h3>
         );
         return;
       }
       
+      // Handle bullet points
+      if (line.trim().startsWith('•')) {
+        inList = true;
+        const bulletContent = line.trim().substring(1).trim();
+        
+        // Process any bold text in the bullet
+        let processedContent = bulletContent.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold">$1</strong>');
+        
+        currentList.push(
+          <li key={`li-${index}`} className="flex items-start">
+            <span className="text-blue-400 mr-2 mt-0.5">•</span>
+            <span dangerouslySetInnerHTML={{ __html: processedContent }} />
+          </li>
+        );
+        return;
+      }
+      
+      // If we hit a non-bullet line, flush the list
+      if (inList && line.trim() && !line.trim().startsWith('•')) {
+        flushList();
+      }
+      
+      // Handle bold text in regular lines
+      let processedLine = line.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold">$1</strong>');
+      
       // Regular line
       if (line.trim()) {
         elements.push(
-          <div key={`line-${index}`} className="mb-2" dangerouslySetInnerHTML={{ __html: processedLine }} />
+          <p key={`p-${index}`} className="mb-2" dangerouslySetInnerHTML={{ __html: processedLine }} />
         );
       }
     });
+    
+    // Flush any remaining list items
+    flushList();
     
     return elements;
   };

@@ -56,38 +56,51 @@ function extractProjectInfo(context: string): { name: string; achievements: stri
   // Try to extract project name and achievements from context
   const lines = context.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   
-  // Look for patterns like "Volkswagen Digital", "Polsat Box Go", etc.
-  const projectPatterns = [
-    /volkswagen\s+digital/i,
-    /polsat\s+box\s+go/i,
-    /tvp\s+vod/i,
-    /ing\s+bank/i,
-    /hireverse/i,
-    /allegro/i,
-    /design\s+system/i
-  ];
+  // Project name mapping
+  const projectMappings: Record<string, string> = {
+    'volkswagen digital': 'Volkswagen Digital',
+    'polsat box go': 'Polsat Box Go',
+    'tvp vod': 'TVP VOD',
+    'ing bank': 'ING Bank',
+    'hireverse': 'Hireverse',
+    'allegro': 'Allegro',
+    'design system': 'Design System'
+  };
   
   let projectName = '';
   const achievements: string[] = [];
+  const seenAchievements = new Set<string>(); // To avoid duplicates
   
   for (const line of lines) {
+    const lineLower = line.toLowerCase();
+    
     // Check if line contains project name
-    for (const pattern of projectPatterns) {
-      if (pattern.test(line) && !projectName) {
-        const match = line.match(pattern);
-        if (match) {
-          projectName = match[0].replace(/^\w/, c => c.toUpperCase());
+    if (!projectName) {
+      for (const [pattern, name] of Object.entries(projectMappings)) {
+        if (lineLower.includes(pattern)) {
+          projectName = name;
+          break;
         }
       }
     }
     
-    // Check if line describes an achievement (contains numbers, percentages, or action words)
-    if (line.match(/\d+|%|scaled|improved|created|built|reduced|designed|implemented|developed/i)) {
-      achievements.push(line);
+    // Check if line describes an achievement
+    if (line.match(/\d+|%|scaled|improved|created|built|reduced|designed|implemented|developed|led|managed/i)) {
+      // Clean up the line and avoid duplicates
+      const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
+      if (cleanLine.length > 20 && !seenAchievements.has(cleanLine.toLowerCase())) {
+        achievements.push(cleanLine);
+        seenAchievements.add(cleanLine.toLowerCase());
+      }
     }
   }
   
-  return projectName ? { name: projectName, achievements } : null;
+  // Limit achievements to the most relevant ones
+  const topAchievements = achievements.slice(0, 5);
+  
+  return projectName && topAchievements.length > 0 
+    ? { name: projectName, achievements: topAchievements } 
+    : null;
 }
 
 function generateResponse(userMessage: string, context: string, messages: Message[]): string {
