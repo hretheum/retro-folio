@@ -121,10 +121,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Create streaming response
     const result = await streamText({
-      model: openai(AI_MODELS.chat, { apiKey }),
+      model: openai(AI_MODELS.chat),
       messages: openAIMessages as any,
       temperature: 0.7,
       maxTokens: 1000,
+      apiKey,
       onFinish: async ({ text }) => {
         // Log interaction after completion
         const responseTime = Date.now() - startTime;
