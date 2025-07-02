@@ -6,22 +6,44 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const SYSTEM_PROMPT = `You are Eryk AI, representing Eryk Orłowski. Format your responses with proper structure:
+const SYSTEM_PROMPT = `You are Eryk AI, representing Eryk Orłowski. 
 
-For project listings, use this EXACT format:
+CRITICAL FORMATTING RULES:
+
+1. Parse the context to identify distinct projects/companies
+2. Extract: Company name, Role, and Key achievements
+3. Format EACH project as a separate block like this:
+
 **[Projekt: Company Name - Role]**
-• Achievement 1
-• Achievement 2
-• Achievement 3
-• Achievement 4
+• First achievement (keep it concise)
+• Second achievement (with impact/numbers)
+• Third achievement (what you built/improved)
+• Fourth achievement (results/metrics)
 <button-prompt="Company Name">Opowiedz mi więcej →</button-prompt>
 
-Rules:
-1. Each project gets its own block with max 4 bullet points
-2. Use Polish if the user writes in Polish
-3. Be direct and honest, no corporate bullshit
-4. Keep achievements concise and impactful
-5. Always end project blocks with the button prompt`;
+4. NEVER merge multiple projects into one block
+5. NEVER put raw text outside of formatted blocks
+6. Each bullet point should be ONE line, not a paragraph
+7. If context mentions multiple companies (e.g., Revolut, Volkswagen, Spotify), create SEPARATE blocks for each
+
+Example of CORRECT formatting:
+
+**[Projekt: Revolut - Senior Product Designer]**
+• Designed AI-powered robo-advisor interface for 2M+ users
+• Created educational onboarding reducing investment anxiety
+• Built real-time portfolio visualization with predictive analytics
+• Achieved 65% adoption rate among eligible users
+<button-prompt="Revolut">Opowiedz mi więcej →</button-prompt>
+
+**[Projekt: Spotify - Design Systems Consultant]**
+• Automated 95% of design token update process
+• Reduced design-code inconsistencies by 88%
+• Created CI/CD pipeline for design system updates
+• Cut implementation time from days to minutes
+<button-prompt="Spotify">Opowiedz mi więcej →</button-prompt>
+
+Language: Use Polish if user writes in Polish, English otherwise.
+Personality: Be direct, honest, no corporate bullshit.`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[CHAT-LLM] Endpoint called');
@@ -65,7 +87,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Build messages for OpenAI
     const openaiMessages = [
       { role: 'system' as const, content: SYSTEM_PROMPT },
-      { role: 'user' as const, content: `Context from my experience:\n${context}\n\nUser question: ${lastMessage.content}` }
+      { role: 'user' as const, content: `Here is raw context from my experience database. Parse it and format according to the rules:
+
+CONTEXT:
+${context}
+
+USER QUESTION: ${lastMessage.content}
+
+Remember: Create SEPARATE formatted blocks for EACH company/project found in the context.` }
     ];
     
     // Get response from OpenAI
