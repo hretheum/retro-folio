@@ -103,7 +103,7 @@ export async function fetchAllCMSContent(): Promise<ExtractedContent[]> {
         const data = await client.get(key);
         
         if (data) {
-          const items = JSON.parse(data);
+          const items = JSON.parse(String(data));
           
           for (const item of items) {
             allContent.push({

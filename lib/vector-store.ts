@@ -68,10 +68,7 @@ export class VectorStore {
     }
 
     // Query the index
-    const results = await this.index.queryItems(queryEmbedding, topK, (item: any) => {
-      // Optional filter function
-      return true;
-    });
+    const results = await this.index.queryItems(queryEmbedding, topK);
 
     // Map results to chunks with filtering
     const searchResults: SearchResult[] = [];

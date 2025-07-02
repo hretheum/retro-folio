@@ -161,13 +161,13 @@ export async function getMetrics(): Promise<ChatMetrics> {
     }));
     
     // Calculate satisfaction rate
-    const helpful = parseInt(String(metrics.feedback_helpful || '0'));
-    const notHelpful = parseInt(String(metrics.feedback_not_helpful || '0'));
+    const helpful = parseInt(String((metrics as any).feedback_helpful || '0'));
+    const notHelpful = parseInt(String((metrics as any).feedback_not_helpful || '0'));
     const totalFeedback = helpful + notHelpful;
     const satisfactionRate = totalFeedback > 0 ? helpful / totalFeedback : 0;
     
     // Calculate daily cost
-    const totalTokens = parseFloat(String(metrics.totalTokens || '0'));
+    const totalTokens = parseFloat(String((metrics as any).totalTokens || '0'));
     const promptTokens = totalTokens * 0.7; // Rough estimate
     const completionTokens = totalTokens * 0.3;
     
@@ -176,8 +176,8 @@ export async function getMetrics(): Promise<ChatMetrics> {
       (completionTokens / 1000) * COST_PER_1K_COMPLETION_TOKENS;
     
     // Calculate error rate
-    const totalQueries = parseInt(String(metrics.totalQueries || '0'));
-    const errors = parseInt(String(metrics.errors || '0'));
+    const totalQueries = parseInt(String((metrics as any).totalQueries || '0'));
+    const errors = parseInt(String((metrics as any).errors || '0'));
     const errorRate = totalQueries > 0 ? errors / totalQueries : 0;
     
     await client.disconnect();
