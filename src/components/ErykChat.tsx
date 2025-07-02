@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Sparkles, X, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { MessageRenderer } from './MessageRenderer';
 import './ErykChat.css';
 
 interface Message {
@@ -38,19 +39,17 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
     setInput(e.target.value);
   };
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const sendMessage = async (messageContent: string) => {
+    if (!messageContent.trim() || isLoading) return;
     
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: input,
+      content: messageContent,
       createdAt: new Date(),
     };
     
     setMessages(prev => [...prev, userMessage]);
-    setInput('');
     setIsLoading(true);
     setError(null);
     
@@ -86,6 +85,12 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendMessage(input);
+    setInput('');
   };
   
   // Auto-scroll to bottom
@@ -189,7 +194,17 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
                     )}
                     <div className="flex-1">
                       <div className="message-text">
-                        {message.content}
+                        {message.role === 'assistant' ? (
+                          <MessageRenderer 
+                            content={message.content} 
+                            onPromptClick={(prompt) => {
+                              // Send the follow-up prompt
+                              sendMessage(prompt);
+                            }}
+                          />
+                        ) : (
+                          message.content
+                        )}
                       </div>
                       {message.role === 'assistant' && message.id !== 'welcome' && (
                         <div className="flex items-center gap-2 mt-2">

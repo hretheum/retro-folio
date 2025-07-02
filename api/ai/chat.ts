@@ -37,6 +37,59 @@ interface Message {
   content: string;
 }
 
+function formatProjectResponse(projectName: string, achievements: string[], isPolish: boolean): string {
+  const formattedAchievements = achievements
+    .filter(a => a.length > 10)
+    .map(a => `• ${a.trim()}`)
+    .join('\n');
+  
+  const tellMeMore = isPolish ? 'Opowiedz mi więcej' : 'Tell me more';
+  
+  return `**[Projekt: ${projectName}]**
+
+${formattedAchievements}
+
+<button-prompt="${projectName}">${tellMeMore} →</button-prompt>`;
+}
+
+function extractProjectInfo(context: string): { name: string; achievements: string[] } | null {
+  // Try to extract project name and achievements from context
+  const lines = context.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  
+  // Look for patterns like "Volkswagen Digital", "Polsat Box Go", etc.
+  const projectPatterns = [
+    /volkswagen\s+digital/i,
+    /polsat\s+box\s+go/i,
+    /tvp\s+vod/i,
+    /ing\s+bank/i,
+    /hireverse/i,
+    /allegro/i,
+    /design\s+system/i
+  ];
+  
+  let projectName = '';
+  const achievements: string[] = [];
+  
+  for (const line of lines) {
+    // Check if line contains project name
+    for (const pattern of projectPatterns) {
+      if (pattern.test(line) && !projectName) {
+        const match = line.match(pattern);
+        if (match) {
+          projectName = match[0].replace(/^\w/, c => c.toUpperCase());
+        }
+      }
+    }
+    
+    // Check if line describes an achievement (contains numbers, percentages, or action words)
+    if (line.match(/\d+|%|scaled|improved|created|built|reduced|designed|implemented|developed/i)) {
+      achievements.push(line);
+    }
+  }
+  
+  return projectName ? { name: projectName, achievements } : null;
+}
+
 function generateResponse(userMessage: string, context: string, messages: Message[]): string {
   // Analyze if the message is in Polish
   const isPolish = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(userMessage) || 
@@ -55,26 +108,39 @@ function generateResponse(userMessage: string, context: string, messages: Messag
     
     const cleanContext = contextLines.join('\n\n');
     
-    // For questions about Hireverse specifically
-    if (msg.includes('hireverse')) {
-      const hirerverseContext = contextLines
-        .filter(line => line.toLowerCase().includes('hireverse'))
-        .join(' ');
+    // Try to extract project information for better formatting
+    const projectInfo = extractProjectInfo(context);
+    
+    // For questions about specific projects
+    if (projectInfo) {
+      const response = formatProjectResponse(projectInfo.name, projectInfo.achievements, isPolish);
       
-      if (hirerverseContext) {
-        return isPolish
-          ? `Hireverse to mój aktualny projekt - platforma AI do rekrutacji, która odwraca tradycyjny proces. ${hirerverseContext}\n\nPo latach frustracji z gównianymi procesami rekrutacyjnymi, postanowiłem to naprawić. Chcesz wiedzieć więcej o technologii czy koncepcji?`
-          : `Hireverse is my current project - an AI recruitment platform that flips the traditional process. ${hirerverseContext}\n\nAfter years of frustration with shitty hiring processes, I decided to fix it. Want to know more about the technology or the concept?`;
-      }
+      const intro = isPolish 
+        ? 'Oto czym się zajmowałem:\n\n'
+        : 'Here\'s what I worked on:\n\n';
+      
+      return intro + response;
     }
     
-    // Use context but make it conversational
-    const contextSummary = cleanContext.substring(0, 1000);
+    // For questions about Hireverse specifically
+    if (msg.includes('hireverse')) {
+      const achievements = [
+        isPolish ? 'Platforma AI do rekrutacji która odwraca tradycyjny proces' : 'AI recruitment platform that flips traditional hiring',
+        isPolish ? 'Kandydaci rozmawiają z AI zamiast rekruterów' : 'Candidates talk to AI instead of recruiters',
+        isPolish ? 'Eliminuje bias i bullshit z procesów rekrutacyjnych' : 'Eliminates bias and bullshit from hiring processes',
+        isPolish ? 'Budowane na najnowszych technologiach AI i NLP' : 'Built with cutting-edge AI and NLP technologies'
+      ];
+      
+      return formatProjectResponse('Hireverse', achievements, isPolish);
+    }
+    
+    // For other contexts, use a cleaner format
+    const contextSummary = cleanContext.substring(0, 800);
     
     if (isPolish) {
-      return `${contextSummary}\n\nTo tyle jeśli chodzi o ${msg.includes('projekt') ? 'moje projekty' : 'to zagadnienie'}. Masz jakieś konkretne pytania?`;
+      return `${contextSummary}\n\n**Chcesz wiedzieć więcej?** Zapytaj o konkretny projekt lub aspekt mojej pracy.`;
     } else {
-      return `${contextSummary}\n\nThat's the gist of ${msg.includes('project') ? 'my projects' : 'it'}. Any specific questions?`;
+      return `${contextSummary}\n\n**Want to know more?** Ask about a specific project or aspect of my work.`;
     }
   }
   
