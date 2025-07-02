@@ -30,20 +30,34 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
       },
     ],
     onError: (error) => {
-      console.error('useChat error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        cause: error.cause,
-      });
+      console.error('=== useChat ERROR ===');
+      console.error('Error object:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      console.error('Error cause:', error.cause);
+      console.error('===================');
     },
-    onResponse: (response) => {
-      console.log('useChat response:', response);
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
+    onResponse: async (response) => {
+      console.log('=== useChat RESPONSE ===');
+      console.log('Response:', response);
+      console.log('Status:', response.status);
+      console.log('Headers:', Object.fromEntries(response.headers.entries()));
+      console.log('URL:', response.url);
+      
+      // Try to read the response body
+      try {
+        const clonedResponse = response.clone();
+        const text = await clonedResponse.text();
+        console.log('Response body (first 200 chars):', text.substring(0, 200));
+      } catch (e) {
+        console.log('Could not read response body:', e);
+      }
+      console.log('===================');
     },
     onFinish: (message) => {
-      console.log('Message finished:', message);
+      console.log('=== Message finished ===');
+      console.log('Message:', message);
+      console.log('===================');
     },
   });
   
