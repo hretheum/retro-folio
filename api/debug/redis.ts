@@ -29,8 +29,14 @@ export default async function handler(
     // Get sample data
     const sampleData: any = {};
     for (const key of keys.slice(0, 5)) {
-      const data = await client.get(key);
-      sampleData[key] = data ? JSON.parse(data).length : 0;
+      if (typeof key === 'string') {
+        const data = await client.get(key);
+        try {
+          sampleData[key] = data ? JSON.parse(data).length : 0;
+        } catch {
+          sampleData[key] = 'parse error';
+        }
+      }
     }
     
     await client.disconnect();
