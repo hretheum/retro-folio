@@ -4,15 +4,15 @@ import { semanticSearch } from '../../lib/semantic-search';
 import { buildMessages } from '../../lib/chat-prompts';
 import { logChatInteraction } from '../../lib/analytics';
 import type { ChatMessage } from '../../lib/chat-prompts';
+import { OpenAIStream, StreamingTextResponse } from 'ai';
 
 // Rate limiting
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
 interface ChatRequest {
-  message: string;
+  messages: Array<{ role: 'user' | 'assistant'; content: string; id?: string }>;
   sessionId?: string;
-  previousMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
 interface TokenUsage {
@@ -66,11 +66,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   
   try {
-    const { message, sessionId = 'anonymous', previousMessages = [] } = req.body as ChatRequest;
+    const { messages, sessionId = 'anonymous' } = req.body as ChatRequest;
     
-    if (!message || typeof message !== 'string') {
-      return res.status(400).json({ error: 'Message is required' });
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'Messages array is required' });
     }
+    
+    // Get the last user message
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage || lastMessage.role !== 'user') {
+      return res.status(400).json({ error: 'Last message must be from user' });
+    }
+    
+    const message = lastMessage.content;
+    const previousMessages = messages.slice(0, -1);
     
     // Rate limiting
     const clientIp = req.headers['x-forwarded-for'] || 'unknown';
@@ -96,56 +105,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.log('No relevant context found');
     }
     
-    // Build messages
-    const messages = buildMessages(
+    // Build messages for OpenAI
+    const openAIMessages = buildMessages(
       message,
       searchResults.context,
       previousMessages
     );
     
     // Create chat completion with streaming
-    const stream = await openai.chat.completions.create({
+    const response = await openai.chat.completions.create({
       model: AI_MODELS.chat,
-      messages: messages as any,
+      messages: openAIMessages as any,
       temperature: 0.7,
       max_tokens: 1000,
       stream: true,
     });
 
-    // Set up SSE headers
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    let fullResponse = '';
-    let tokenCount = 0;
-
-    // Stream the response
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      if (content) {
-        fullResponse += content;
-        tokenCount++;
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
-      }
-    }
-
-    // Send done signal
-    res.write('data: [DONE]\n\n');
-    res.end();
-
-    // Log interaction after completion
-    const responseTime = Date.now() - startTime;
-    const tokenUsage = estimateTokenUsage(messages, fullResponse);
-    
-    await logChatInteraction({
-      sessionId,
-      query: message,
-      responseTime,
-      tokenUsage,
-      contextFound,
-      timestamp: new Date().toISOString(),
+    // Convert the response into a friendly text-stream
+    const stream = OpenAIStream(response, {
+      onCompletion: async (completion: string) => {
+        // Log interaction after completion
+        const responseTime = Date.now() - startTime;
+        const tokenUsage = estimateTokenUsage(openAIMessages, completion);
+        
+        await logChatInteraction({
+          sessionId,
+          query: message,
+          responseTime,
+          tokenUsage,
+          contextFound,
+          timestamp: new Date().toISOString(),
+        });
+      },
     });
+
+    // Return a StreamingTextResponse, which can be consumed by the Vercel AI SDK on the client
+    return new StreamingTextResponse(stream);
   } catch (error) {
     console.error('Chat endpoint error:', error);
     

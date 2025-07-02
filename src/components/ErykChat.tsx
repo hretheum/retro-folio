@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Sparkles, X, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useChat } from 'ai/react';
@@ -76,7 +77,7 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
   
   const containerClass = embedded ? 'eryk-chat embedded' : 'eryk-chat modal';
   
-  return (
+  const chatContent = (
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -226,4 +227,11 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
       )}
     </AnimatePresence>
   );
+  
+  // Use portal for modal to ensure it renders at document root
+  if (!embedded && typeof document !== 'undefined') {
+    return createPortal(chatContent, document.body);
+  }
+  
+  return chatContent;
 }

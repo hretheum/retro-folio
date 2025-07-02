@@ -10,7 +10,7 @@
 .eryk-chat.modal {
   position: fixed;
   inset: 0;
-  z-index: 9000;
+  z-index: 99998;
   display: flex;
   align-items: center;
   justify-content: center;
