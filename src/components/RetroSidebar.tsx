@@ -1,5 +1,4 @@
 import React from 'react';
-import SpotifyPlayer from './SpotifyPlayer';
 import VisitorCounter from './VisitorCounter';
 
 interface RetroSidebarProps {
@@ -33,11 +32,6 @@ const RetroSidebar: React.FC<RetroSidebarProps> = ({
         </div>
       </div>
 
-      {/* Spotify Player Widget */}
-      <div className="retro-widget">
-        <h3 className="retro-widget-title">🎵 Music Player</h3>
-        <SpotifyPlayer onPlayStateChange={onMusicStateChange} />
-      </div>
 
       <div className="retro-widget">
         <h3 className="retro-widget-title">📖 Guestbook</h3>

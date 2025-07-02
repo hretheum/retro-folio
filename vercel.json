@@ -5,9 +5,16 @@
   "functions": {
     "api/content/[type].ts": {
       "maxDuration": 10
+    },
+    "api/ai/chat.ts": {
+      "maxDuration": 10
     }
   },
   "rewrites": [
+    {
+      "source": "/api/content/:type",
+      "destination": "/api/content/[type]"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
