@@ -1,28 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { openai as openaiClient, AI_MODELS } from '../../lib/openai';
+import { openai, AI_MODELS } from '../../lib/openai';
 import { semanticSearch } from '../../lib/semantic-search';
 import { buildMessages } from '../../lib/chat-prompts';
 import { logChatInteraction } from '../../lib/analytics';
-import type { ChatMessage } from '../../lib/chat-prompts';
-import { streamText } from 'ai';
-import { openai } from '@ai-sdk/openai';
 
 // Rate limiting
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
-interface ChatRequest {
-  messages: Array<{ role: 'user' | 'assistant'; content: string; id?: string }>;
-  sessionId?: string;
-}
-
-interface TokenUsage {
-  prompt: number;
-  completion: number;
-  total: number;
-}
-
-// Simple in-memory rate limiter (in production, use Redis)
+// Simple in-memory rate limiter
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
 function checkRateLimit(identifier: string): boolean {
@@ -45,8 +31,8 @@ function checkRateLimit(identifier: string): boolean {
   return true;
 }
 
-// Estimate token usage (rough approximation)
-function estimateTokenUsage(messages: any[], response?: string): TokenUsage {
+// Estimate token usage
+function estimateTokenUsage(messages: any[], response?: string) {
   const promptTokens = messages.reduce((sum, msg) => {
     return sum + Math.ceil(msg.content.length / 4);
   }, 0);
@@ -60,15 +46,17 @@ function estimateTokenUsage(messages: any[], response?: string): TokenUsage {
   };
 }
 
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-  
+
   try {
-    const { messages, sessionId = 'anonymous' } = req.body as ChatRequest;
+    // Parse request body
+    const { messages, sessionId = 'anonymous' } = req.body;
     
+    // Validate messages
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Messages array is required' });
     }
@@ -78,9 +66,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!lastMessage || lastMessage.role !== 'user') {
       return res.status(400).json({ error: 'Last message must be from user' });
     }
-    
-    const message = lastMessage.content;
-    const previousMessages = messages.slice(0, -1);
     
     // Rate limiting
     const clientIp = req.headers['x-forwarded-for'] || 'unknown';
@@ -96,67 +81,100 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Search for relevant context
     console.log('Searching for context...');
     const searchResults = await semanticSearch({
-      query: message,
+      query: lastMessage.content,
       topK: 5,
       minScore: 0.7,
     });
     
     const contextFound = searchResults.results.length > 0;
-    if (!contextFound) {
-      console.log('No relevant context found');
-    }
     
     // Build messages for OpenAI
+    const previousMessages = messages.slice(0, -1);
     const openAIMessages = buildMessages(
-      message,
+      lastMessage.content,
       searchResults.context,
       previousMessages
     );
     
-    // Get API key
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY is not configured');
-    }
-
-    // Create streaming response
-    const result = await streamText({
-      model: openai(AI_MODELS.chat),
-      messages: openAIMessages as any,
+    // Create streaming response compatible with Vercel AI SDK
+    const stream = await openai.chat.completions.create({
+      model: AI_MODELS.chat,
+      messages: openAIMessages,
       temperature: 0.7,
-      maxTokens: 1000,
-      apiKey,
-      onFinish: async ({ text }) => {
-        // Log interaction after completion
-        const responseTime = Date.now() - startTime;
-        const tokenUsage = estimateTokenUsage(openAIMessages, text);
-        
-        await logChatInteraction({
-          sessionId,
-          query: message,
-          responseTime,
-          tokenUsage,
-          contextFound,
-          timestamp: new Date().toISOString(),
-        });
-      },
+      max_tokens: 1000,
+      stream: true,
     });
-
-    // Return the stream as response
-    return result.toDataStreamResponse();
+    
+    // Set headers for streaming
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    let fullResponse = '';
+    
+    // Process the stream
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      if (content) {
+        fullResponse += content;
+        // Format for Vercel AI SDK
+        const data = JSON.stringify({ 
+          id: chunk.id,
+          object: 'chat.completion.chunk',
+          created: chunk.created,
+          model: chunk.model,
+          choices: [{
+            index: 0,
+            delta: { content },
+            finish_reason: chunk.choices[0]?.finish_reason || null
+          }]
+        });
+        res.write(`data: ${data}\n\n`);
+      }
+    }
+    
+    // Send done signal
+    res.write('data: [DONE]\n\n');
+    res.end();
+    
+    // Log the interaction
+    const responseTime = Date.now() - startTime;
+    const tokenUsage = estimateTokenUsage(openAIMessages, fullResponse);
+    
+    logChatInteraction({
+      sessionId,
+      query: lastMessage.content,
+      responseTime,
+      tokenUsage,
+      contextFound,
+      timestamp: new Date().toISOString(),
+    }).catch(console.error);
+    
   } catch (error) {
     console.error('Chat endpoint error:', error);
     
-    // Check if it's an OpenAI API error
-    if (error instanceof Error && error.message.includes('API key')) {
+    // If headers haven't been sent yet, send error as JSON
+    if (!res.headersSent) {
+      if (error instanceof Error) {
+        if (error.message.includes('API key')) {
+          return res.status(500).json({
+            error: 'OpenAI API is not configured. Please add OPENAI_API_KEY to environment variables.',
+          });
+        }
+        
+        return res.status(500).json({
+          error: 'Failed to process chat request',
+          details: error.message,
+        });
+      }
+      
       return res.status(500).json({
-        error: 'OpenAI API is not configured. Please add OPENAI_API_KEY to environment variables.',
+        error: 'An unexpected error occurred',
       });
+    } else {
+      // If we're already streaming, send error in stream format
+      res.write(`data: ${JSON.stringify({ error: 'Stream interrupted' })}\n\n`);
+      res.end();
     }
-    
-    return res.status(500).json({
-      error: 'Failed to process chat request',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    });
   }
 }
