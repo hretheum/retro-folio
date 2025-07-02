@@ -29,6 +29,19 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
         content: 'Hi! I\'m Eryk AI. You can ask me about my experience, technology projects, leadership philosophy, or anything else related to my career. How can I help you?',
       },
     ],
+    onError: (error) => {
+      console.error('useChat error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause,
+      });
+    },
+    onResponse: (response) => {
+      console.log('useChat response:', response);
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+    },
   });
   
   // Auto-scroll to bottom
@@ -180,7 +193,15 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
                 <div className="message error">
                   <div className="message-content">
                     <div className="message-text text-red-400">
-                      Sorry, an error occurred. Please try again later.
+                      <div>Sorry, an error occurred. Please try again later.</div>
+                      <div className="text-xs mt-2 opacity-70">
+                        Error: {error.message || 'Unknown error'}
+                      </div>
+                      {process.env.NODE_ENV === 'development' && (
+                        <div className="text-xs mt-1 font-mono">
+                          {error.stack}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
