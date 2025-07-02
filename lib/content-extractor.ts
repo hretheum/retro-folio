@@ -99,7 +99,7 @@ export async function fetchAllCMSContent(): Promise<ExtractedContent[]> {
       await client.connect();
       
       for (const type of contentTypes) {
-        const key = `cms:${type}`;
+        const key = `content:${type}`;
         const data = await client.get(key);
         
         if (data) {
