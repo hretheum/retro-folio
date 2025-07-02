@@ -17,6 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { messages, sessionId = 'anonymous' } = req.body;
+    console.log('[CHAT] Processing messages:', messages.length, 'messages');
     
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Messages array is required' });
@@ -30,11 +31,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const startTime = Date.now();
     
     // Search for relevant context
+    console.log('[CHAT] Searching for context for:', lastMessage.content);
     const searchResults = await semanticSearch({
       query: lastMessage.content,
       topK: 5,
       minScore: 0.7,
     });
+    console.log('[CHAT] Found', searchResults.results.length, 'relevant results');
     
     // Build messages for OpenAI
     const previousMessages = messages.slice(0, -1);
@@ -45,6 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
     
     // Create streaming response
+    console.log('[CHAT] Calling OpenAI with', openAIMessages.length, 'messages');
     const stream = await openai.chat.completions.create({
       model: AI_MODELS.chat,
       messages: openAIMessages,
@@ -52,6 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       max_tokens: 1000,
       stream: true,
     });
+    console.log('[CHAT] Got stream from OpenAI');
     
     // Set headers for Server-Sent Events
     res.setHeader('Content-Type', 'text/event-stream');
