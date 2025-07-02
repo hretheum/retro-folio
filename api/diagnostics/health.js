@@ -1,9 +1,6 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import Redis from 'ioredis';
+import { createClient } from 'redis';
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req, res) {
   const health = {
     status: 'checking',
     timestamp: new Date().toISOString(),
@@ -21,13 +18,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     lastError: null
   };
 
-  try {
-    // Test Redis
-    await redis.ping();
-    health.checks.redis.status = 'ok';
-  } catch (error) {
-    health.checks.redis.status = 'error';
-    health.checks.redis.error = error instanceof Error ? error.message : 'Unknown error';
+  // Test Redis
+  if (process.env.REDIS_URL) {
+    try {
+      const redis = createClient({ url: process.env.REDIS_URL });
+      await redis.connect();
+      await redis.ping();
+      await redis.disconnect();
+      health.checks.redis.status = 'ok';
+    } catch (error) {
+      health.checks.redis = {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   // Test OpenAI
@@ -38,13 +42,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
         }
       });
-      health.checks.openai.status = response.ok ? 'ok' : 'error';
+      health.checks.openai = {
+        status: response.ok ? 'ok' : 'error'
+      };
       if (!response.ok) {
         health.checks.openai.error = `HTTP ${response.status}`;
       }
     } catch (error) {
-      health.checks.openai.status = 'error';
-      health.checks.openai.error = error instanceof Error ? error.message : 'Unknown error';
+      health.checks.openai = {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   }
 
@@ -56,18 +64,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'Api-Key': process.env.PINECONE_API_KEY,
         }
       });
-      health.checks.pinecone.status = response.ok ? 'ok' : 'error';
+      health.checks.pinecone = {
+        status: response.ok ? 'ok' : 'error'
+      };
       if (!response.ok) {
         health.checks.pinecone.error = `HTTP ${response.status}`;
       }
     } catch (error) {
-      health.checks.pinecone.status = 'error';
-      health.checks.pinecone.error = error instanceof Error ? error.message : 'Unknown error';
+      health.checks.pinecone = {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   }
 
   // Pobierz ostatni błąd z localStorage (jeśli dostępny przez query param)
-  if (req.query.includeLastError) {
+  if (req.query?.includeLastError) {
     // To musi być pobrane przez klienta
     health.lastError = 'Check browser localStorage for "last_error" key';
   }
