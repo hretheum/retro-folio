@@ -26,11 +26,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
     console.log('[CHAT] Sending response...');
     
-    // Send response
-    res.write(`data: ${response}\n\n`);
+    // Send response in chunks as useChat expects
+    for (const char of response) {
+      res.write(`data: ${JSON.stringify(char)}\n\n`);
+    }
     res.write('data: [DONE]\n\n');
     res.end();
     
