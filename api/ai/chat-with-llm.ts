@@ -6,6 +6,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Simple in-memory cache for Pinecone results (resets on function cold start)
+const searchCache = new Map<string, { results: any[], timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 const SYSTEM_PROMPT = `You are Eryk AI, representing Eryk Orłowski. 
 
 CRITICAL FORMATTING RULES:
@@ -68,20 +72,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Search Pinecone for relevant context
     let context = '';
     try {
-      // For general project queries, search for multiple terms
-      const searchQuery = lastMessage.content.toLowerCase().includes('projekt') || 
-                         lastMessage.content.toLowerCase().includes('project') ||
-                         lastMessage.content.toLowerCase().includes('doświadczenie') ||
-                         lastMessage.content.toLowerCase().includes('experience')
-        ? 'projects experience portfolio Volkswagen Revolut Spotify mBank ING Polsat design lead senior'
-        : lastMessage.content;
+      // Enhance search query based on user intent
+      let searchQuery = lastMessage.content;
+      const lowerContent = lastMessage.content.toLowerCase();
+      
+      // Map specific queries to broader searches
+      if (lowerContent.includes('bank') || lowerContent.includes('finanse') || lowerContent.includes('finance')) {
+        searchQuery = 'bank finance fintech mBank Revolut ING financial services payments';
+      } else if (lowerContent.includes('projekt') || lowerContent.includes('project') || 
+                 lowerContent.includes('doświadczenie') || lowerContent.includes('experience')) {
+        searchQuery = 'projects experience portfolio Volkswagen Revolut Spotify mBank ING Polsat Allegro GitLab design lead senior';
+      } else if (lowerContent.includes('wszystkie') || lowerContent.includes('all') || 
+                 lowerContent.includes('inne') || lowerContent.includes('other')) {
+        searchQuery = 'Volkswagen Revolut Spotify mBank ING Polsat Allegro GitLab Cognition Labs Hireverse design system robo-advisor';
+      }
       
       console.log('[CHAT-LLM] Search query:', searchQuery);
       
-      const searchResults = await hybridSearchPinecone(searchQuery, {
-        topK: 12, // Increase to get more results
-        namespace: 'production',
-      });
+      // Check cache first
+      const cacheKey = searchQuery.toLowerCase();
+      const cached = searchCache.get(cacheKey);
+      let searchResults;
+      
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        console.log('[CHAT-LLM] Using cached results');
+        searchResults = cached.results;
+      } else {
+        searchResults = await hybridSearchPinecone(searchQuery, {
+          topK: 15, // Increase even more for better variety
+          namespace: 'production',
+        });
+        
+        // Cache the results
+        searchCache.set(cacheKey, {
+          results: searchResults,
+          timestamp: Date.now()
+        });
+      }
       
       console.log('[CHAT-LLM] Found', searchResults.length, 'search results');
       
@@ -126,7 +153,11 @@ ${context}
 
 USER QUESTION: ${lastMessage.content}
 
-Remember: Create SEPARATE formatted blocks for EACH company/project found in the context.` }
+IMPORTANT: 
+- If user asks about banks/finance, show ALL financial projects (mBank, Revolut, ING, etc.)
+- If user asks about projects in general, show 5-8 diverse projects
+- Create SEPARATE formatted blocks for EACH company/project found in the context
+- Do NOT filter or limit to just one project unless user asks for specific company` }
     ];
     
     // Get response from OpenAI
