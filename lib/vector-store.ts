@@ -67,8 +67,14 @@ export class VectorStore {
       return [];
     }
 
-    // Query the index
-    const results = await this.index.queryItems(queryEmbedding, topK);
+    // Query the index - vectra requires additional parameters
+    const results = await this.index.queryItems(
+      queryEmbedding, 
+      topK,
+      undefined, // filter function
+      undefined, // options
+      undefined  // additional parameter
+    );
 
     // Map results to chunks with filtering
     const searchResults: SearchResult[] = [];
