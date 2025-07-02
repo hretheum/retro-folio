@@ -94,7 +94,18 @@ export function useLeadershipContent() {
       
       const data = await response.json();
       if (data && data.length > 0 && data[0].data) {
-        setContent(data[0].data);
+        const fetchedContent = data[0].data;
+        // Walidacja - upewnij się, że metrics i pillars są tablicami
+        const validatedContent: LeadershipContent = {
+          mainTitle: fetchedContent.mainTitle || defaultContent.mainTitle,
+          mainDescription: fetchedContent.mainDescription || defaultContent.mainDescription,
+          letsTalkTitle: fetchedContent.letsTalkTitle || defaultContent.letsTalkTitle,
+          letsTalkDescription: fetchedContent.letsTalkDescription || defaultContent.letsTalkDescription,
+          letsTalkCTA: fetchedContent.letsTalkCTA || defaultContent.letsTalkCTA,
+          metrics: Array.isArray(fetchedContent.metrics) ? fetchedContent.metrics : defaultContent.metrics,
+          pillars: Array.isArray(fetchedContent.pillars) ? fetchedContent.pillars : defaultContent.pillars
+        };
+        setContent(validatedContent);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');

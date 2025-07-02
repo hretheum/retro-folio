@@ -27,8 +27,12 @@ export default function Leadership() {
   }
 
   // Sort metrics and pillars by order
-  const sortedMetrics = [...content.metrics].sort((a, b) => a.order - b.order);
-  const sortedPillars = [...content.pillars].sort((a, b) => a.order - b.order);
+  const sortedMetrics = Array.isArray(content.metrics) 
+    ? [...content.metrics].sort((a, b) => a.order - b.order)
+    : [];
+  const sortedPillars = Array.isArray(content.pillars)
+    ? [...content.pillars].sort((a, b) => a.order - b.order)
+    : [];
 
   return (
     <section className="relative min-h-screen py-20 px-6">
