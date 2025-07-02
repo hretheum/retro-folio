@@ -8,7 +8,7 @@ export const openai = new OpenAI({
 // Models configuration
 export const AI_MODELS = {
   chat: 'gpt-4-turbo-preview',
-  embedding: 'text-embedding-3-small',
+  embedding: 'text-embedding-3-large',
 } as const;
 
 // Check API availability
