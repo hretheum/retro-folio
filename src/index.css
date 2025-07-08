@@ -1152,10 +1152,258 @@ body:has(.portfolio-page) {
   animation: retro-blink 2s infinite;
 }
 
+/* Hamburger Menu Styles */
+.retro-hamburger {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 50;
+  background: var(--retro-black);
+  border: 3px outset var(--retro-gray);
+  padding: 0.5rem;
+  cursor: pointer;
+  box-shadow: 
+    inset 1px 1px 2px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s ease;
+}
+
+.retro-hamburger:hover {
+  background: var(--retro-electric-blue);
+  transform: translateY(-1px);
+}
+
+.retro-hamburger:active {
+  border: 3px inset var(--retro-gray);
+  transform: translateY(0);
+}
+
+.retro-hamburger-inner {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 20px;
+  height: 16px;
+  margin-bottom: 0.25rem;
+}
+
+.retro-hamburger-inner span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: var(--retro-white);
+  transition: all 0.3s ease;
+}
+
+.retro-hamburger-open span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+  background: var(--retro-hot-pink);
+}
+
+.retro-hamburger-open span:nth-child(2) {
+  opacity: 0;
+}
+
+.retro-hamburger-open span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -6px);
+  background: var(--retro-hot-pink);
+}
+
+.retro-hamburger-text {
+  font-size: 0.6rem;
+  font-weight: bold;
+  color: var(--retro-white);
+  text-align: center;
+  font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+}
+
+.retro-menu-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 45;
+}
+
+.retro-mobile-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100%;
+  background: var(--retro-black);
+  border-right: 4px outset var(--retro-gray);
+  z-index: 50;
+  overflow-y: auto;
+  box-shadow: 
+    inset 2px 2px 4px rgba(255, 255, 255, 0.1),
+    inset -2px -2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.retro-mobile-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: linear-gradient(45deg, 
+    var(--retro-hot-pink) 0%, 
+    var(--retro-purple) 100%);
+  border-bottom: 3px inset var(--retro-gray);
+}
+
+.retro-mobile-menu-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--retro-white);
+  text-shadow: 2px 2px 0 var(--retro-black);
+}
+
+.retro-mobile-menu-close {
+  background: var(--retro-red);
+  border: 2px outset var(--retro-gray);
+  color: var(--retro-white);
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.retro-mobile-menu-close:hover {
+  background: var(--retro-hot-pink);
+}
+
+.retro-mobile-menu-content {
+  padding: 1rem;
+}
+
+.retro-mobile-menu-section {
+  margin-bottom: 2rem;
+}
+
+.retro-mobile-menu-subtitle {
+  color: var(--retro-neon-green);
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  text-shadow: 1px 1px 0 var(--retro-black);
+  border-bottom: 2px inset var(--retro-gray);
+  padding-bottom: 0.5rem;
+}
+
+.retro-mobile-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--retro-black);
+  border: 2px outset var(--retro-gray);
+  color: var(--retro-white);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 
+    inset 1px 1px 2px rgba(255, 255, 255, 0.1),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.retro-mobile-menu-item:hover {
+  background: var(--retro-electric-blue);
+  color: var(--retro-white);
+}
+
+.retro-mobile-menu-item-active {
+  background: var(--retro-hot-pink);
+  border: 2px inset var(--retro-gray);
+  animation: retro-pulse 2s infinite;
+}
+
+.retro-mobile-menu-item-icon {
+  margin-right: 0.5rem;
+  font-size: 1rem;
+}
+
+.retro-mobile-menu-item-text {
+  flex: 1;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.retro-mobile-menu-item-indicator {
+  color: var(--retro-yellow);
+  font-size: 1.2rem;
+  animation: retro-blink 1s infinite;
+}
+
+.retro-mobile-menu-link {
+  display: block;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--retro-cyan);
+  text-decoration: none;
+  border: 1px outset var(--retro-gray);
+  background: var(--retro-black);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.retro-mobile-menu-link:hover {
+  background: var(--retro-purple);
+  color: var(--retro-white);
+}
+
+.retro-mobile-menu-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-top: 2rem;
+  border-top: 2px inset var(--retro-gray);
+  background: var(--retro-dark-gray);
+}
+
+.retro-mobile-menu-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--retro-white);
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.retro-mobile-menu-status-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--retro-neon-green);
+  border-radius: 50%;
+  animation: retro-pulse 1s infinite;
+}
+
+.retro-mobile-menu-time {
+  font-family: 'Courier New', monospace;
+  background: var(--retro-black);
+  color: var(--retro-neon-green);
+  padding: 0.2rem 0.4rem;
+  border: 1px inset var(--retro-gray);
+  font-size: 0.7rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   body {
     cursor: auto; /* Show default cursor on mobile */
+  }
+  
+  .retro-hamburger {
+    display: block;
   }
   
   .retro-main-container {
@@ -1173,8 +1421,12 @@ body:has(.portfolio-page) {
     display: none;
   }
   
+  .retro-nav {
+    display: none; /* Hide main navigation on mobile */
+  }
+  
   .retro-content {
-    height: calc(100vh - 180px); /* Adjust for mobile */
+    height: calc(100vh - 140px); /* Adjust for mobile without nav */
   }
   
   .retro-title {
@@ -1222,6 +1474,30 @@ body:has(.portfolio-page) {
   
   .retro-nav-extras {
     font-size: 0.6rem;
+  }
+  
+  /* Mobile footer improvements */
+  .retro-footer {
+    padding: 1rem 0.5rem;
+  }
+  
+  .retro-footer-links {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  
+  .retro-footer-link {
+    font-size: 0.8rem;
+  }
+  
+  .retro-separator {
+    display: none;
+  }
+  
+  .retro-copyright {
+    font-size: 0.7rem;
+    text-align: center;
   }
 }
 

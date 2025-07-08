@@ -23,6 +23,7 @@ import SectionNavigator from './components/SectionNavigator';
 import ScrollInstructions from './components/ScrollInstructions';
 import FloatingElements from './components/FloatingElements';
 import SectionContent from './components/SectionContent';
+import HamburgerMenu from './components/HamburgerMenu';
 import { useScrollNavigation } from './hooks/useScrollNavigation';
 import { AuthProvider, useAuth, LoginPage } from './components/AuthWrapper';
 
@@ -88,6 +89,13 @@ function MainApp() {
 
       {/* Retro Background Pattern */}
       <div className="retro-bg-pattern" />
+
+      {/* Mobile Hamburger Menu */}
+      <HamburgerMenu 
+        currentSection={currentSection}
+        onSectionChange={handleSectionChange}
+        sections={sections.map(s => s.name)}
+      />
 
       {/* 3D Background Scene (Hidden but still functional) */}
       <div className="fixed inset-0 z-0 opacity-0">
