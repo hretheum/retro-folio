@@ -1,24 +1,48 @@
 import { hybridSearchPinecone } from './pinecone-vector-store';
 
 // Query Intent Analysis
-export type QueryIntent = 'SYNTHESIS' | 'EXPLORATION' | 'COMPARISON' | 'CASUAL' | 'SPECIFIC';
+export type QueryIntent = 'SYNTHESIS' | 'EXPLORATION' | 'COMPARISON' | 'FACTUAL' | 'CASUAL';
 
 export function analyzeQueryIntent(userQuery: string): QueryIntent {
   const query = userQuery.toLowerCase();
   
-  if (query.match(/analiz|porówn|ocen|syntez|co potrafisz|umiejętności|kompetencj|przegląd|podsumuj/)) {
-    return 'SYNTHESIS';
-  }
-  if (query.match(/opowiedz|więcej|szczegół|jak|dlaczego|proces|historia|metodologia/)) {
-    return 'EXPLORATION';
-  }
-  if (query.match(/versus|vs|różnic|lepsze|gorsze|wybór|alternatyw/)) {
-    return 'COMPARISON';
-  }
-  if (query.match(/konkretny|specyficzny|dokładnie|precyzyjnie/) || query.split(' ').length <= 2) {
-    return 'SPECIFIC';
+  // Enhanced Polish patterns with better precision
+  const polishPatterns = {
+    synthesis: /co potrafisz|jakie są.*umiejętności|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj/,
+    exploration: /opowiedz|więcej|szczegół|jak.*proces|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób/,
+    comparison: /porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne/,
+    factual: /ile(?!\s+razy)|kiedy|gdzie|kto|która|które|jakie(?!\s+są)|jaki(?!\s+sposób)|data|rok|liczba|wiek|czas|długo|dużo|mało|konkretnie|dokładnie|precyzyjnie|faktycznie/
+  };
+  
+  // Enhanced English patterns with better precision
+  const englishPatterns = {
+    synthesis: /what.*(can|are|do)|competenc|skill|capabilit|overview|summariz|review|present|characterize|analyz|assess|evaluat/,
+    exploration: /tell.*more|detail|how.*(process|work)|why|history|methodology|explain|describe|expand|elaborate|what.*happen/,
+    comparison: /versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between/,
+    factual: /how\s+(much|many|long|old)|when|where|who|what(?!\s+are)|which|date|year|number|age|time|specific|exact|precise|fact/
+  };
+  
+  // Test for factual queries first (most specific)
+  if (polishPatterns.factual.test(query) || englishPatterns.factual.test(query)) {
+    return 'FACTUAL';
   }
   
+  // Test for synthesis queries
+  if (polishPatterns.synthesis.test(query) || englishPatterns.synthesis.test(query)) {
+    return 'SYNTHESIS';
+  }
+  
+  // Test for exploration queries
+  if (polishPatterns.exploration.test(query) || englishPatterns.exploration.test(query)) {
+    return 'EXPLORATION';
+  }
+  
+  // Test for comparison queries
+  if (polishPatterns.comparison.test(query) || englishPatterns.comparison.test(query)) {
+    return 'COMPARISON';
+  }
+  
+  // Default to casual for simple greetings, short queries, or unclear intent
   return 'CASUAL';
 }
 
@@ -63,7 +87,7 @@ function getConversationMode(intent: QueryIntent): string {
     case 'SYNTHESIS': return 'ANALITYCZNY - Dokonuj syntezy i łącz informacje';
     case 'EXPLORATION': return 'EKSPLORACYJNY - Rozwijaj tematy i opowiadaj historie';
     case 'COMPARISON': return 'PORÓWNAWCZY - Analizuj różnice i podobieństwa';
-    case 'SPECIFIC': return 'PRECYZYJNY - Podawaj konkretne, zwięzłe informacje';
+    case 'FACTUAL': return 'PRECYZYJNY - Podawaj konkretne, zwięzłe informacje';
     default: return 'NATURALNY - Prowadź swobodną konwersację';
   }
 }
@@ -112,14 +136,14 @@ function getSpecificInstructions(intent: QueryIntent, isPolish: boolean): string
 - Compare results and metrics
 - Present conclusions from comparison`,
       
-    SPECIFIC: isPolish ?
-      `INSTRUKCJE PRECYZYJNE:
+    FACTUAL: isPolish ?
+      `INSTRUKCJE FAKTYCZNE:
 - Podawaj konkretne, zwięzłe informacje
 - Używaj liczb, dat i faktów
 - Odpowiadaj bezpośrednio na pytanie
 - Unikaj zbędnych rozwinięć
 - Zaproponuj możliwość dalszego doprecyzowania` :
-      `SPECIFIC INSTRUCTIONS:
+      `FACTUAL INSTRUCTIONS:
 - Provide concrete, concise information
 - Use numbers, dates and facts
 - Answer directly to the question
@@ -142,6 +166,98 @@ function getSpecificInstructions(intent: QueryIntent, isPolish: boolean): string
   };
   
   return instructions[intent];
+}
+
+// Dynamic Context Sizing
+export interface ContextSizeConfig {
+  maxTokens: number;
+  chunkCount: number;
+  diversityBoost: boolean;
+  queryExpansion: boolean;
+  topKMultiplier: number;
+}
+
+export function getOptimalContextSize(userQuery: string, queryLength: number = 0): ContextSizeConfig {
+  const queryIntent = analyzeQueryIntent(userQuery);
+  const effectiveQueryLength = queryLength || userQuery.length;
+  
+  // Base configurations for different query types
+  const baseConfigs: Record<QueryIntent, ContextSizeConfig> = {
+    FACTUAL: {
+      maxTokens: 600,
+      chunkCount: 3,
+      diversityBoost: false,
+      queryExpansion: false,
+      topKMultiplier: 1.0
+    },
+    CASUAL: {
+      maxTokens: 400,
+      chunkCount: 2,
+      diversityBoost: false,
+      queryExpansion: false,
+      topKMultiplier: 0.8
+    },
+    EXPLORATION: {
+      maxTokens: 1200,
+      chunkCount: 6,
+      diversityBoost: true,
+      queryExpansion: true,
+      topKMultiplier: 1.5
+    },
+    COMPARISON: {
+      maxTokens: 1800,
+      chunkCount: 8,
+      diversityBoost: true,
+      queryExpansion: true,
+      topKMultiplier: 2.0
+    },
+    SYNTHESIS: {
+      maxTokens: 2000,
+      chunkCount: 10,
+      diversityBoost: true,
+      queryExpansion: true,
+      topKMultiplier: 2.5
+    }
+  };
+  
+  let config = { ...baseConfigs[queryIntent] };
+  
+  // Adjust based on query length/complexity
+  const queryComplexity = calculateQueryComplexity(userQuery, effectiveQueryLength);
+  
+  if (queryComplexity === 'HIGH') {
+    config.maxTokens = Math.floor(config.maxTokens * 1.5);
+    config.chunkCount = Math.floor(config.chunkCount * 1.3);
+    config.topKMultiplier *= 1.2;
+  } else if (queryComplexity === 'LOW') {
+    config.maxTokens = Math.floor(config.maxTokens * 0.7);
+    config.chunkCount = Math.floor(config.chunkCount * 0.8);
+    config.topKMultiplier *= 0.9;
+  }
+  
+  // Ensure minimums
+  config.maxTokens = Math.max(config.maxTokens, 300);
+  config.chunkCount = Math.max(config.chunkCount, 1);
+  config.topKMultiplier = Math.max(config.topKMultiplier, 0.5);
+  
+  return config;
+}
+
+function calculateQueryComplexity(query: string, queryLength: number): 'LOW' | 'MEDIUM' | 'HIGH' {
+  const complexityIndicators = {
+    multipleQuestions: (query.match(/\?/g) || []).length > 1,
+    conjunctions: /\b(and|or|but|oraz|ale|czy|lub|i )\b/gi.test(query),
+    specificTerms: /\b(specific|dokładnie|konkretnie|precyzyjnie|exactly|detailed|szczegółowo)\b/gi.test(query),
+    comparisonWords: /\b(versus|vs|compared|różnice|podobieństwa|lepsze|gorsze)\b/gi.test(query),
+    longQuery: queryLength > 100,
+    multipleTopics: query.split(/\b(projekt|project|team|zespół|design|experience|doświadczenie)\b/gi).length > 3
+  };
+  
+  const complexityScore = Object.values(complexityIndicators).filter(Boolean).length;
+  
+  if (complexityScore >= 3) return 'HIGH';
+  if (complexityScore >= 1) return 'MEDIUM';
+  return 'LOW';
 }
 
 // Enhanced Context Retrieval
@@ -204,7 +320,7 @@ function enhanceQuery(userQuery: string): string {
     SYNTHESIS: ['projects', 'achievements', 'competencies', 'experience', 'skills'],
     EXPLORATION: ['details', 'process', 'methodology', 'approach', 'background'],
     COMPARISON: ['different', 'various', 'comparison', 'alternatives', 'options'],
-    SPECIFIC: ['specific', 'exact', 'particular', 'details'],
+    FACTUAL: ['specific', 'exact', 'particular', 'details', 'facts', 'numbers'],
     CASUAL: ['experience', 'work', 'projects']
   };
   
