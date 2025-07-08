@@ -79,6 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Search Pinecone for relevant context with enhanced caching
     let context = '';
     let cacheHit = false;
+    let searchResults: any[] = [];
     
     try {
       const searchQuery = lastMessage.content;
@@ -91,7 +92,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Enhanced cache checking
       const cacheKey = enhancedQuery.toLowerCase();
       const cached = searchCache.get(cacheKey);
-      let searchResults;
       
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
         console.log('[CHAT-STREAMING] Using cached results');

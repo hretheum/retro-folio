@@ -60,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const metricsKey = `chat-metrics:${dateKey}`;
       
       const dayMetrics = await client.lRange(metricsKey, 0, -1);
-      const parsedMetrics = dayMetrics.map(m => JSON.parse(m));
+      const parsedMetrics = dayMetrics.map(m => JSON.parse(String(m)));
       
       last7Days.push({
         date: dateKey,
@@ -69,7 +69,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Get feedback stats
-    const feedbackStats = await client.hGetAll('chat-feedback:stats');
+    const feedbackStatsRaw = await client.hGetAll('chat-feedback:stats');
+    const feedbackStats: Record<string, string> = {};
+    
+    // Convert Buffer values to strings if necessary
+    if (Array.isArray(feedbackStatsRaw)) {
+      // Handle array case - should not happen with hGetAll but type safety
+      console.warn('Unexpected array result from hGetAll');
+    } else {
+      // Handle Map case
+      for (const [key, value] of Object.entries(feedbackStatsRaw)) {
+        feedbackStats[key] = String(value);
+      }
+    }
 
     // Calculate analytics
     const analytics = calculateAnalytics(currentStats, last7Days, feedbackStats);
