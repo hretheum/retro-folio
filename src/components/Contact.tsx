@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Linkedin, Github, ExternalLink, MessageSquare, Sparkles, Globe, Twitter, BarChart3 } from 'lucide-react';
+import { Mail, Linkedin, Github, ExternalLink, MessageSquare, Sparkles, Globe, Twitter } from 'lucide-react';
 import { useContactContent } from '../hooks/useContactContent';
 import { ErykChatEnhanced } from './ErykChatEnhanced';
-import { AnalyticsDashboard } from './AnalyticsDashboard';
 
 export default function Contact() {
   const [showAI, setShowAI] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(false);
   const { content, loading } = useContactContent();
 
   // Icon mapping
@@ -120,17 +118,6 @@ export default function Contact() {
                 <MessageSquare className="w-5 h-5 mr-2" />
                 {content.aiButtonText || 'Start AI Conversation'}
               </motion.button>
-              
-              {/* Analytics Button for Demo */}
-              <motion.button
-                onClick={() => setShowAnalytics(true)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center px-6 py-3 border border-gray-600 text-gray-300 rounded-full font-medium hover:border-blue-500 hover:text-blue-400 transition-all duration-300"
-              >
-                <BarChart3 className="w-4 h-4 mr-2" />
-                View Analytics
-              </motion.button>
             </div>
             
             {/* Feature Highlights */}
@@ -202,15 +189,9 @@ export default function Contact() {
       <ErykChatEnhanced 
         isOpen={showAI} 
         onClose={() => setShowAI(false)}
-        enableAnalytics={true}
+        enableAnalytics={false}
         enableVoice={false} // Can be enabled when voice features are implemented
         enableStreaming={true}
-      />
-      
-      {/* Analytics Dashboard */}
-      <AnalyticsDashboard
-        isOpen={showAnalytics}
-        onClose={() => setShowAnalytics(false)}
       />
     </section>
   );

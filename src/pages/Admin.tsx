@@ -22,7 +22,8 @@ import {
   Star,
   LogOut,
   Users,
-  Phone
+  Phone,
+  BarChart3
 } from 'lucide-react';
 import { sanitizeInput } from '../utils/validation';
 import { useContent } from '../hooks/useContent';
@@ -44,7 +45,7 @@ interface ContentItem {
 export default function Admin() {
   const navigate = useNavigate();
   const { logout, userEmail } = useAuth();
-  const [activeTab, setActiveTab] = useState<'work' | 'timeline' | 'experiment' | 'leadership' | 'contact'>('work');
+  const [activeTab, setActiveTab] = useState<'work' | 'timeline' | 'experiment' | 'leadership' | 'contact' | 'analytics'>('work');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all');
   const [isEditing, setIsEditing] = useState(false);
@@ -107,9 +108,14 @@ export default function Admin() {
   };
 
   const handleCreate = () => {
+    // Only allow creation for content types, not for special tabs
+    if (activeTab === 'leadership' || activeTab === 'contact' || activeTab === 'analytics') {
+      return;
+    }
+
     const newItem: ContentItem = {
       id: Date.now().toString(),
-      type: activeTab,
+      type: activeTab as 'work' | 'timeline' | 'experiment',
       title: 'New Item',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -295,7 +301,8 @@ export default function Admin() {
     { id: 'timeline', label: 'Timeline', icon: Clock, count: timelineContent.items.length },
     { id: 'experiment', label: 'Experiments', icon: Lightbulb, count: experimentContent.items.length },
     { id: 'leadership', label: 'About Me', icon: Users, count: 0 },
-    { id: 'contact', label: 'Contact', icon: Phone, count: 0 }
+    { id: 'contact', label: 'Contact', icon: Phone, count: 0 },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, count: 0 }
   ];
 
   // Loading state
@@ -398,7 +405,7 @@ export default function Admin() {
       </section>
 
       {/* Filters & Actions */}
-      {activeTab !== 'leadership' && activeTab !== 'contact' && (
+      {activeTab !== 'leadership' && activeTab !== 'contact' && activeTab !== 'analytics' && (
         <section className="py-6 px-6 border-b border-gray-800">
           <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
@@ -455,6 +462,34 @@ export default function Admin() {
             <LeadershipFields />
           ) : activeTab === 'contact' ? (
             <ContactFields />
+          ) : activeTab === 'analytics' ? (
+            <div className="space-y-8">
+              <div className="text-center">
+                <h2 className="text-3xl font-bold text-white mb-4 flex items-center justify-center gap-3">
+                  <BarChart3 className="w-8 h-8 text-blue-400" />
+                  AI Chat Analytics
+                </h2>
+                <p className="text-gray-400 mb-8">
+                  Monitor AI chat performance and user interactions
+                </p>
+              </div>
+              
+              {/* Embedded Analytics */}
+              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+                <iframe
+                  src="/analytics-embed"
+                  className="w-full h-[800px] border-0"
+                  title="Analytics Dashboard"
+                />
+              </div>
+              
+              {/* Alternative: Direct API Integration */}
+              <div className="text-center text-gray-400">
+                <p className="text-sm">
+                  Analytics data is updated in real-time. Refresh the page to see latest metrics.
+                </p>
+              </div>
+            </div>
           ) : isLoading ? (
             <div className="text-center py-16">
               <div className="text-gray-400">
