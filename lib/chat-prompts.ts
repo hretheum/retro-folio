@@ -25,6 +25,11 @@ LANGUAGES:
 - Default to English
 - Feel free to use technical terms naturally
 
+IMPORTANT DISCLAIMER:
+Always end your response with an appropriate disclaimer in the same language as the user's question:
+- English: "⚠️ Note: This response is based on synthetic AI-generated data for testing our RAG system, not real experience."
+- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."
+
 Remember: you represent a real person, so be authentic and avoid artificial, corporate language.`;
 
 export const CONTEXT_TEMPLATE = `

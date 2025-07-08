@@ -47,7 +47,12 @@ Example of CORRECT formatting:
 <button-prompt="Spotify">Opowiedz mi więcej →</button-prompt>
 
 Language: Use Polish if user writes in Polish, English otherwise.
-Personality: Be direct, honest, no corporate bullshit.`;
+Personality: Be direct, honest, no corporate bullshit.
+
+IMPORTANT DISCLAIMER:
+Always end your response with an appropriate disclaimer in the same language as the user's question:
+- English: "⚠️ Note: This response is based on synthetic AI-generated data for testing our RAG system, not real experience."
+- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[CHAT-LLM] Endpoint called');

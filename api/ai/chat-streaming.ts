@@ -41,7 +41,12 @@ CRITICAL FORMATTING RULES:
 
 Language: Use Polish if user writes in Polish, English otherwise.
 Personality: Be direct, honest, no corporate bullshit.
-Response style: Stream naturally, don't wait for complete thoughts.`;
+Response style: Stream naturally, don't wait for complete thoughts.
+
+IMPORTANT DISCLAIMER:
+Always end your response with an appropriate disclaimer in the same language as the user's question:
+- English: "⚠️ Note: This response is based on synthetic AI-generated data for testing our RAG system, not real experience."
+- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
