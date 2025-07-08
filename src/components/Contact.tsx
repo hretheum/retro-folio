@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Linkedin, Github, ExternalLink, MessageSquare, Sparkles, Globe, Twitter } from 'lucide-react';
+import { Mail, Linkedin, Github, ExternalLink, MessageSquare, Sparkles, Globe, Twitter, BarChart3 } from 'lucide-react';
 import { useContactContent } from '../hooks/useContactContent';
-import { ErykChat } from './ErykChat';
+import { ErykChatEnhanced } from './ErykChatEnhanced';
+import { AnalyticsDashboard } from './AnalyticsDashboard';
 
 export default function Contact() {
   const [showAI, setShowAI] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const { content, loading } = useContactContent();
 
   // Icon mapping
@@ -91,7 +93,7 @@ export default function Contact() {
           </div>
         </motion.div>
 
-        {/* AI Interview CTA */}
+        {/* Enhanced AI Interview CTA */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -106,15 +108,46 @@ export default function Contact() {
             <p className="text-gray-300 mb-6">
               {content.aiDescription}
             </p>
-            <motion.button
-              onClick={() => setShowAI(true)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center mx-auto px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-full font-medium hover:from-blue-600 hover:to-cyan-600 transition-all duration-300 shadow-lg"
-            >
-              <MessageSquare className="w-5 h-5 mr-2" />
-              {content.aiButtonText}
-            </motion.button>
+            
+            {/* Enhanced CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <motion.button
+                onClick={() => setShowAI(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-full font-medium hover:from-blue-600 hover:to-cyan-600 transition-all duration-300 shadow-lg"
+              >
+                <MessageSquare className="w-5 h-5 mr-2" />
+                {content.aiButtonText || 'Start AI Conversation'}
+              </motion.button>
+              
+              {/* Analytics Button for Demo */}
+              <motion.button
+                onClick={() => setShowAnalytics(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center px-6 py-3 border border-gray-600 text-gray-300 rounded-full font-medium hover:border-blue-500 hover:text-blue-400 transition-all duration-300"
+              >
+                <BarChart3 className="w-4 h-4 mr-2" />
+                View Analytics
+              </motion.button>
+            </div>
+            
+            {/* Feature Highlights */}
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center justify-center gap-2 text-gray-400">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                Real-time streaming
+              </div>
+              <div className="flex items-center justify-center gap-2 text-gray-400">
+                <div className="w-2 h-2 bg-blue-400 rounded-full" />
+                Enhanced performance
+              </div>
+              <div className="flex items-center justify-center gap-2 text-gray-400">
+                <div className="w-2 h-2 bg-purple-400 rounded-full" />
+                Smart analytics
+              </div>
+            </div>
           </div>
         </motion.div>
 
@@ -165,8 +198,20 @@ export default function Contact() {
         </motion.div>
       </div>
 
-      {/* AI Chat Modal */}
-      <ErykChat isOpen={showAI} onClose={() => setShowAI(false)} />
+      {/* Enhanced AI Chat Modal */}
+      <ErykChatEnhanced 
+        isOpen={showAI} 
+        onClose={() => setShowAI(false)}
+        enableAnalytics={true}
+        enableVoice={false} // Can be enabled when voice features are implemented
+        enableStreaming={true}
+      />
+      
+      {/* Analytics Dashboard */}
+      <AnalyticsDashboard
+        isOpen={showAnalytics}
+        onClose={() => setShowAnalytics(false)}
+      />
     </section>
   );
 }
