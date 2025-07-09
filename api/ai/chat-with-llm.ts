@@ -6,6 +6,11 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Build version info
+// @ts-ignore
+const BUILD_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev';
+const BUILD_DATE = new Date().toISOString().split('T')[0];
+
 // Simple in-memory cache for Pinecone results (resets on function cold start)
 const searchCache = new Map<string, { results: any[], timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -52,7 +57,12 @@ Personality: Be direct, honest, no corporate bullshit.
 IMPORTANT DISCLAIMER:
 Always end your response with an appropriate disclaimer in the same language as the user's question:
 - English: "⚠️ Note: This response is based on synthetic AI-generated data for testing our RAG system, not real experience."
-- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."`;
+- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."
+
+BUILD VERSION INFO:
+Always include build version at the very end (after disclaimer) in a subtle format:
+- English: "ᴮᵘⁱˡᵈ: [commit-hash] • [date]"
+- Polish: "ᴮᵘⁱˡᵈ: [commit-hash] • [date]"`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[CHAT-LLM] Endpoint called');
@@ -161,7 +171,8 @@ IMPORTANT INSTRUCTIONS:
 2. ALWAYS create SEPARATE blocks for EACH company found in context
 3. Do NOT arbitrarily limit results - if context has 5 banks, show all 5
 4. Group similar projects (e.g., all fintech together) but still show each separately
-5. If user asks about specific domain (finance, design systems, etc.), prioritize those` }
+5. If user asks about specific domain (finance, design systems, etc.), prioritize those
+6. Include build version info at the very end: ᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}` }
     ];
     
     // Get response from OpenAI

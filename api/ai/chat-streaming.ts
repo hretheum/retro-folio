@@ -6,6 +6,11 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Build version info
+// @ts-ignore
+const BUILD_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev';
+const BUILD_DATE = new Date().toISOString().split('T')[0];
+
 // Enhanced cache with TTL and metrics
 const searchCache = new Map<string, { 
   results: any[], 
@@ -46,7 +51,12 @@ Response style: Stream naturally, don't wait for complete thoughts.
 IMPORTANT DISCLAIMER:
 Always end your response with an appropriate disclaimer in the same language as the user's question:
 - English: "⚠️ Note: This response is based on synthetic AI-generated data for testing our RAG system, not real experience."
-- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."`;
+- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."
+
+BUILD VERSION INFO:
+Always include build version at the very end (after disclaimer) in a subtle format:
+- English: "ᴮᵘⁱˡᵈ: [commit-hash] • [date]"
+- Polish: "ᴮᵘⁱˡᵈ: [commit-hash] • [date]"`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
@@ -168,7 +178,8 @@ IMPORTANT INSTRUCTIONS:
 1. Analyze user's intent and respond appropriately
 2. ALWAYS create SEPARATE blocks for EACH company found in context
 3. Stream your response naturally - don't wait for complete thoughts
-4. Use the button-prompt format for interactive elements` }
+4. Use the button-prompt format for interactive elements
+5. Include build version info at the very end: ᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}` }
     ];
     
     // Create streaming completion
