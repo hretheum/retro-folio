@@ -11,6 +11,12 @@
     },
     "api/ai/chat-with-llm.ts": {
       "maxDuration": 30
+    },
+    "api/ai/chat-streaming.ts": {
+      "maxDuration": 30
+    },
+    "api/ai/analytics.ts": {
+      "maxDuration": 10
     }
   },
   "rewrites": [

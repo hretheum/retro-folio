@@ -185,10 +185,15 @@ IMPORTANT INSTRUCTIONS:
     
     const responseText = completion.choices[0]?.message?.content || 'Sorry, I could not generate a response.';
     
+    // Add build version info at the end
+    const versionInfo = `\n\nᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}`;
+    const finalResponse = responseText + versionInfo;
+    
     console.log('[CHAT-LLM] Sending response');
+    console.log('[BUILD_INFO] Added version:', BUILD_VERSION, BUILD_DATE);
     
     return res.status(200).json({
-      content: responseText
+      content: finalResponse
     });
     
   } catch (error) {

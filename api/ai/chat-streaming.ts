@@ -11,6 +11,8 @@ const openai = new OpenAI({
 const BUILD_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev';
 const BUILD_DATE = new Date().toISOString().split('T')[0];
 
+console.log('[BUILD_INFO] Version:', BUILD_VERSION, 'Date:', BUILD_DATE);
+
 // Enhanced cache with TTL and metrics
 const searchCache = new Map<string, { 
   results: any[], 
@@ -63,6 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   totalRequests++;
   
   console.log('[CHAT-STREAMING] Endpoint called');
+  console.log('[BUILD_INFO] Current build:', BUILD_VERSION, BUILD_DATE);
   
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -212,6 +215,11 @@ IMPORTANT INSTRUCTIONS:
         }
       }
     }
+    
+    // Add build version info at the end
+    const versionInfo = `\n\nᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}`;
+    res.write(versionInfo);
+    responseText += versionInfo;
     
     // Calculate metrics
     const responseTime = Date.now() - startTime;
