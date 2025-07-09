@@ -46,6 +46,12 @@ CRITICAL FORMATTING RULES:
 6. Each bullet point should be ONE line, not a paragraph
 7. If context mentions multiple companies (e.g., Revolut, Volkswagen, Spotify), create SEPARATE blocks for each
 
+SPECIAL HANDLING:
+- If the user's question is nonsensical (like "lorem ipsum", random text, or unrelated to portfolio/experience), respond politely:
+  - Polish: "Przepraszam, nie zrozumiałem pytania. Może zapytaj o moje projekty, doświadczenie lub konkretne firmy?"
+  - English: "Sorry, I didn't understand your question. Try asking about my projects, experience, or specific companies?"
+- If context is empty or irrelevant to the question, acknowledge this instead of inventing projects
+
 Language: Use Polish if user writes in Polish, English otherwise.
 Personality: Be direct, honest, no corporate bullshit.
 Response style: Stream naturally, don't wait for complete thoughts.
@@ -173,16 +179,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { role: 'user' as const, content: `Here is raw context from my experience database. Parse it and format according to the rules:
 
 CONTEXT:
-${context}
+${context || 'NO CONTEXT FOUND - The search returned no relevant results'}
 
 USER QUESTION: ${lastMessage.content}
 
 IMPORTANT INSTRUCTIONS:
-1. Analyze user's intent and respond appropriately
-2. ALWAYS create SEPARATE blocks for EACH company found in context
-3. Stream your response naturally - don't wait for complete thoughts
-4. Use the button-prompt format for interactive elements
-5. Include build version info at the very end: ᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}` }
+1. If the question seems nonsensical or unrelated to portfolio/experience, respond politely as instructed
+2. If context is empty or irrelevant, acknowledge this instead of inventing information
+3. ALWAYS create SEPARATE blocks for EACH company found in context
+4. Stream your response naturally - don't wait for complete thoughts
+5. Use the button-prompt format for interactive elements
+6. Include build version info at the very end: ᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}` }
     ];
     
     // Create streaming completion

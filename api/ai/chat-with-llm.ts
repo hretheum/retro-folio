@@ -51,6 +51,12 @@ Example of CORRECT formatting:
 • Cut implementation time from days to minutes
 <button-prompt="Spotify">Opowiedz mi więcej →</button-prompt>
 
+SPECIAL HANDLING:
+- If the user's question is nonsensical (like "lorem ipsum", random text, or unrelated to portfolio/experience), respond politely:
+  - Polish: "Przepraszam, nie zrozumiałem pytania. Może zapytaj o moje projekty, doświadczenie lub konkretne firmy?"
+  - English: "Sorry, I didn't understand your question. Try asking about my projects, experience, or specific companies?"
+- If context is empty or irrelevant to the question, acknowledge this instead of inventing projects
+
 Language: Use Polish if user writes in Polish, English otherwise.
 Personality: Be direct, honest, no corporate bullshit.
 
@@ -158,21 +164,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { role: 'user' as const, content: `Here is raw context from my experience database. Parse it and format according to the rules:
 
 CONTEXT:
-${context}
+${context || 'NO CONTEXT FOUND - The search returned no relevant results'}
 
 USER QUESTION: ${lastMessage.content}
 
 IMPORTANT INSTRUCTIONS:
-1. Analyze user's intent:
+1. If the question seems nonsensical or unrelated to portfolio/experience, respond politely as instructed
+2. If context is empty or irrelevant, acknowledge this instead of inventing information
+3. Analyze user's intent:
    - "banki" / "banks" → Show ALL banking/fintech projects found in context
    - "projekty" / "projects" → Show diverse selection of 5-8 projects
    - "inne" / "other" / "więcej" / "more" → Show additional projects not yet shown
    
-2. ALWAYS create SEPARATE blocks for EACH company found in context
-3. Do NOT arbitrarily limit results - if context has 5 banks, show all 5
-4. Group similar projects (e.g., all fintech together) but still show each separately
-5. If user asks about specific domain (finance, design systems, etc.), prioritize those
-6. Include build version info at the very end: ᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}` }
+4. ALWAYS create SEPARATE blocks for EACH company found in context
+5. Do NOT arbitrarily limit results - if context has 5 banks, show all 5
+6. Group similar projects (e.g., all fintech together) but still show each separately
+7. If user asks about specific domain (finance, design systems, etc.), prioritize those
+8. Include build version info at the very end: ᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}` }
     ];
     
     // Get response from OpenAI
