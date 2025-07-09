@@ -139,3 +139,19 @@ export interface FormattedContext {
     confidence: number;
   };
 }
+
+// Context size result interface for robust query processing
+export interface ContextSizeResult {
+  optimalSize: number;
+  confidence: number;
+  processingTime: number;
+  factors?: {
+    complexity: number;
+    domain: string;
+    queryType: string;
+    memoryConstraint: number;
+    historicalPerformance: number;
+  };
+  reasoning?: string;
+  metadata?: BaseMetadata;
+}
