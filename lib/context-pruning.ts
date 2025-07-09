@@ -1,9 +1,10 @@
 import { analyzeQueryIntent, getOptimalContextSize } from './chat-intelligence';
+import { BaseMetadata } from './types';
 
 export interface ContextChunk {
   id: string;
   content: string;
-  metadata: any;
+  metadata: BaseMetadata;
   score: number;
   tokens: number;
   source: string;
@@ -84,11 +85,11 @@ export class ContextPruner {
     return Math.max(0, Math.min(1, totalScore));
   }
   
-  private calculateMetadataImportance(metadata: any): number {
+  private calculateMetadataImportance(metadata: BaseMetadata): number {
     let importance = 0;
     
     // Content type importance
-    const contentTypeWeights = {
+    const contentTypeWeights: Record<string, number> = {
       'work': 0.9,
       'leadership': 0.8,
       'experiment': 0.7,
@@ -96,25 +97,24 @@ export class ContextPruner {
       'contact': 0.3
     };
     
-    if (metadata.contentType) {
-      importance += contentTypeWeights[metadata.contentType] || 0.5;
+    if (metadata.type && typeof metadata.type === 'string') {
+      importance += contentTypeWeights[metadata.type] || 0.5;
     }
     
     // Featured content boost
-    if (metadata.featured) {
+    if ('featured' in metadata && metadata.featured) {
       importance += 0.2;
     }
     
     // Technology relevance
-    if (metadata.technologies && Array.isArray(metadata.technologies)) {
+    if ('technologies' in metadata && Array.isArray(metadata.technologies)) {
       importance += Math.min(0.3, metadata.technologies.length * 0.1);
     }
     
     // Recency boost
-    if (metadata.date) {
-      const date = new Date(metadata.date);
-      const now = new Date();
-      const yearsDiff = (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24 * 365);
+    if (metadata.timestamp && typeof metadata.timestamp === 'number') {
+      const now = Date.now();
+      const yearsDiff = (now - metadata.timestamp) / (1000 * 60 * 60 * 24 * 365);
       importance += Math.max(0, 1 - yearsDiff / 3) * 0.2;
     }
     
