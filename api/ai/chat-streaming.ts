@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { hybridSearchPinecone } from '../../lib/pinecone-vector-store';
+import { chatContextAdapter } from '../../lib/chat-context-adapter';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -10,15 +10,7 @@ const openai = new OpenAI({
 // @ts-ignore
 const BUILD_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev';
 
-// Enhanced cache with TTL and metrics
-const searchCache = new Map<string, { 
-  results: any[], 
-  timestamp: number,
-  hitCount: number 
-}>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// Performance metrics
+// Performance metrics (kept for backwards compatibility)
 let totalRequests = 0;
 let cacheHits = 0;
 let totalResponseTime = 0;
@@ -104,97 +96,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'Access-Control-Allow-Headers': 'Cache-Control',
     });
 
-    // Search Pinecone for relevant context with enhanced caching
+    // Search for relevant context using the full context management system
     let context = '';
     let cacheHit = false;
     let searchResults: any[] = [];
-    
-    // TODO: Replace with IntegrationOrchestrator for true 100% SR context management
-    // The current implementation uses simple hybridSearchPinecone without:
-    // - context sizing optimization
-    // - multi-stage retrieval
-    // - intelligent context pruning
-    // - robust error handling with fallbacks
-    // See /lib/integration-orchestrator.ts for the full implementation
+    let confidence = 0;
     
     try {
       const searchQuery = lastMessage.content;
-      const enhancedQuery = searchQuery.split(' ').length < 3 
-        ? `${searchQuery} projects experience work` 
-        : searchQuery;
       
       console.log('[CHAT-STREAMING] Original query:', searchQuery);
-      console.log('[CHAT-STREAMING] Enhanced query:', enhancedQuery);
       
-      // Enhanced cache checking
-      const cacheKey = enhancedQuery.toLowerCase();
-      const cached = searchCache.get(cacheKey);
+      // Use the full context management pipeline
+      const contextResult = await chatContextAdapter.getContext(searchQuery, {
+        sessionId,
+        maxTokens: 4000,
+        namespace: 'production'
+      });
       
-      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        console.log('[CHAT-STREAMING] Using cached results');
-        searchResults = cached.results;
-        cached.hitCount++;
-        cacheHit = true;
-        cacheHits++;
-      } else {
-        const searchStart = Date.now();
-        searchResults = await hybridSearchPinecone(enhancedQuery, {
-          topK: 50, // Increased from 20 to get more comprehensive results
-          namespace: 'production',
-          vectorWeight: 0.7
-        });
-        
-        const searchTime = Date.now() - searchStart;
-        console.log(`[CHAT-STREAMING] Search completed in ${searchTime}ms`);
-        
-        // Cache the results with metrics
-        searchCache.set(cacheKey, {
-          results: searchResults,
-          timestamp: Date.now(),
-          hitCount: 1
-        });
-
-        // Clean old cache entries to prevent memory leaks
-        if (searchCache.size > 100) {
-          const oldestKey = [...searchCache.entries()]
-            .sort(([,a], [,b]) => a.timestamp - b.timestamp)[0][0];
-          searchCache.delete(oldestKey);
-        }
-      }
+      context = contextResult.context;
+      searchResults = contextResult.searchResults;
+      confidence = contextResult.confidence;
+      cacheHit = contextResult.performanceMetrics.cacheHit;
       
-      console.log('[CHAT-STREAMING] Found', searchResults.length, 'search results');
+      console.log('[CHAT-STREAMING] Context management completed:', {
+        contextLength: context.length,
+        searchResultsCount: searchResults.length,
+        confidence,
+        stages: contextResult.performanceMetrics.stages,
+        totalTime: contextResult.performanceMetrics.totalTime
+      });
       
       // Log first few results for debugging
       searchResults.slice(0, 3).forEach((result, index) => {
-        console.log(`[CHAT-STREAMING] Result ${index + 1} (score: ${result.score}):`);
-        console.log(`[CHAT-STREAMING] Text preview: ${result.chunk.text.substring(0, 150)}...`);
-        console.log(`[CHAT-STREAMING] Metadata:`, result.chunk.metadata);
+        const text = result.chunk?.text || result.content || result.text || '';
+        console.log(`[CHAT-STREAMING] Result ${index + 1}:`);
+        console.log(`[CHAT-STREAMING] Text preview: ${text.substring(0, 150)}...`);
       });
       
-      if (searchResults.length > 0) {
-        // Enhanced deduplication with similarity scoring
-        const seenContent = new Set<string>();
-        const diverseResults = searchResults.filter(result => {
-          const text = result.chunk.text.toLowerCase();
-          const key = text.substring(0, 100);
-          
-          if (seenContent.has(key)) {
-            return false;
-          }
-          seenContent.add(key);
-          return true;
-        });
-        
-        console.log(`[CHAT-STREAMING] After deduplication: ${diverseResults.length} unique results`);
-        
-        context = diverseResults
-          .map(r => r.chunk.text)
-          .join('\n\n---\n\n');
-          
-        console.log(`[CHAT-STREAMING] Total context length: ${context.length} characters`);
-      }
     } catch (searchError) {
-      console.error('[CHAT-STREAMING] Pinecone search error:', searchError);
+      console.error('[CHAT-STREAMING] Context management error:', searchError);
+      // Continue with empty context
     }
     
     // Build messages for OpenAI
@@ -257,6 +199,12 @@ IMPORTANT INSTRUCTIONS:
     const responseTime = Date.now() - startTime;
     totalResponseTime += responseTime;
     const avgResponseTime = totalResponseTime / totalRequests;
+    
+    // Update cache hits based on context management result
+    if (cacheHit) {
+      cacheHits++;
+    }
+    
     const cacheHitRate = (cacheHits / totalRequests) * 100;
     
     console.log('[CHAT-STREAMING] Stream completed');
@@ -264,6 +212,7 @@ IMPORTANT INSTRUCTIONS:
     console.log(`[CHAT-STREAMING] Average response time: ${avgResponseTime.toFixed(2)}ms`);
     console.log(`[CHAT-STREAMING] Cache hit rate: ${cacheHitRate.toFixed(2)}%`);
     console.log(`[CHAT-STREAMING] Total tokens streamed: ${tokenCount}`);
+    console.log(`[CHAT-STREAMING] Context confidence: ${confidence.toFixed(2)}`);
     console.log(`[CHAT-STREAMING] Cache hit: ${cacheHit}`);
     
     // End the stream
@@ -345,6 +294,6 @@ export function getPerformanceMetrics() {
     cacheHits,
     cacheHitRate: totalRequests > 0 ? (cacheHits / totalRequests) * 100 : 0,
     averageResponseTime: totalRequests > 0 ? totalResponseTime / totalRequests : 0,
-    cacheSize: searchCache.size
+    // Removed cacheSize as it's no longer used
   };
 }

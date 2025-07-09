@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { hybridSearchPinecone } from '../../lib/pinecone-vector-store';
+import { chatContextAdapter } from '../../lib/chat-context-adapter';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -9,10 +9,6 @@ const openai = new OpenAI({
 // Build version info
 // @ts-ignore
 const BUILD_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev';
-
-// Simple in-memory cache for Pinecone results (resets on function cold start)
-const searchCache = new Map<string, { results: any[], timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 const SYSTEM_PROMPT = `You are Eryk AI, representing Eryk Orłowski. 
 
@@ -96,72 +92,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'No message content' });
     }
     
-    // Search Pinecone for relevant context
+    // Search for relevant context using the full context management system
     let context = '';
+    let searchResults: any[] = [];
+    let confidence = 0;
+    let cacheHit = false;
+    
     try {
-      // Use the original query - let Pinecone handle semantic search
       const searchQuery = lastMessage.content;
       
-      // For very short queries, add context
-      const enhancedQuery = searchQuery.split(' ').length < 3 
-        ? `${searchQuery} projects experience work` 
-        : searchQuery;
+      console.log('[CHAT-LLM] Original query:', searchQuery);
       
-      console.log('[CHAT-LLM] Search query:', enhancedQuery);
-      
-      // Check cache first
-      const cacheKey = enhancedQuery.toLowerCase();
-      const cached = searchCache.get(cacheKey);
-      let searchResults;
-      
-      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        console.log('[CHAT-LLM] Using cached results');
-        searchResults = cached.results;
-      } else {
-        searchResults = await hybridSearchPinecone(enhancedQuery, {
-          topK: 50, // Increased from 20 to get more comprehensive results
-          namespace: 'production',
-          vectorWeight: 0.7 // Default weight for semantic search
-        });
-        
-        // Cache the results
-        searchCache.set(cacheKey, {
-          results: searchResults,
-          timestamp: Date.now()
-        });
-      }
-      
-      console.log('[CHAT-LLM] Found', searchResults.length, 'search results');
-      
-      // Log what Pinecone returned for debugging
-      searchResults.forEach((result, index) => {
-        console.log(`[CHAT-LLM] Result ${index + 1} (score: ${result.score}):`);
-        console.log(`[CHAT-LLM] Text preview: ${result.chunk.text.substring(0, 150)}...`);
-        console.log(`[CHAT-LLM] Metadata:`, result.chunk.metadata);
+      // Use the full context management pipeline
+      const contextResult = await chatContextAdapter.getContext(searchQuery, {
+        sessionId,
+        maxTokens: 4000,
+        namespace: 'production'
       });
       
-      if (searchResults.length > 0) {
-        // Deduplicate and ensure variety of projects
-        const seenContent = new Set<string>();
-        const diverseResults = searchResults.filter(result => {
-          const text = result.chunk.text.toLowerCase();
-          const key = text.substring(0, 100); // Use first 100 chars as key
-          
-          if (seenContent.has(key)) {
-            return false;
-          }
-          seenContent.add(key);
-          return true;
-        });
-        
-        console.log(`[CHAT-LLM] After deduplication: ${diverseResults.length} unique results`);
-        
-        context = diverseResults
-          .map(r => r.chunk.text)
-          .join('\n\n---\n\n'); // Add separator between chunks
-      }
+      context = contextResult.context;
+      searchResults = contextResult.searchResults;
+      confidence = contextResult.confidence;
+      cacheHit = contextResult.performanceMetrics.cacheHit;
+      
+      console.log('[CHAT-LLM] Context management completed:', {
+        contextLength: context.length,
+        searchResultsCount: searchResults.length,
+        confidence,
+        stages: contextResult.performanceMetrics.stages,
+        totalTime: contextResult.performanceMetrics.totalTime
+      });
+      
+      // Log what was returned for debugging
+      searchResults.slice(0, 3).forEach((result, index) => {
+        const text = result.chunk?.text || result.content || result.text || '';
+        console.log(`[CHAT-LLM] Result ${index + 1}:`);
+        console.log(`[CHAT-LLM] Text preview: ${text.substring(0, 150)}...`);
+        if (result.chunk?.metadata || result.metadata) {
+          console.log(`[CHAT-LLM] Metadata:`, result.chunk?.metadata || result.metadata);
+        }
+      });
+      
     } catch (searchError) {
-      console.error('[CHAT-LLM] Pinecone search error:', searchError);
+      console.error('[CHAT-LLM] Context management error:', searchError);
+      // Continue with empty context
     }
     
     // Build messages for OpenAI

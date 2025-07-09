@@ -5,6 +5,8 @@ import { BaseMetadata, SearchResult, ContentChunk } from './types';
 import { resilientContextManager } from './bulletproof-error-handler';
 import { improvedMemoryManager } from './improved-memory-manager';
 import { robustQueryProcessor } from './robust-query-processor';
+import { multiStageRetrieval } from './multi-stage-retrieval';
+import { enhancedHybridSearch } from './enhanced-hybrid-search';
 
 interface PipelineStage {
   name: string;
@@ -185,48 +187,64 @@ export class Pipeline {
     confidence: number;
     tokensUsed: number;
   } {
-    // Aggregate results from all stages
+    // Get the pruned chunks from context pruning stage
+    const prunedChunksResult = context.stageResults.get('context-pruning');
+    const prunedChunks = prunedChunksResult?.prunedChunks || [];
+    
+    // Get search results from hybrid search or multi-stage retrieval
+    const hybridSearchResult = context.stageResults.get('hybrid-search');
+    const multiStageResult = context.stageResults.get('multi-stage-retrieval');
+    const searchResults = hybridSearchResult?.results || multiStageResult?.results || [];
+    
+    // Build content from pruned chunks
     let content = '';
     let totalConfidence = 0;
     let totalTokens = 0;
-    let stageCount = 0;
-
-    for (const [stageName, result] of context.stageResults.entries()) {
-      stageCount++;
+    let processedChunks = 0;
+    
+    // Use pruned chunks if available, otherwise use search results
+    const chunks = prunedChunks.length > 0 ? prunedChunks : searchResults;
+    
+    for (const chunk of chunks) {
+      processedChunks++;
       
-      if (result && typeof result === 'object') {
-        // Extract content based on stage type
-        if (result.content) {
-          content += result.content + '\n';
-        } else if (result.response) {
-          content += result.response + '\n';
-        } else if (Array.isArray(result)) {
-          content += result.map(r => r.content || r.text || '').join('\n') + '\n';
-        }
-
-        // Aggregate confidence
-        if (typeof result.confidence === 'number') {
-          totalConfidence += result.confidence;
-        } else {
-          totalConfidence += 0.7; // Default confidence
-        }
-
-        // Aggregate tokens
-        if (typeof result.tokensUsed === 'number') {
-          totalTokens += result.tokensUsed;
-        } else if (typeof result.optimalSize === 'number') {
-          totalTokens += result.optimalSize;
-        }
+      // Extract text content
+      let chunkText = '';
+      if (chunk.content) {
+        chunkText = chunk.content;
+      } else if (chunk.text) {
+        chunkText = chunk.text;
+      } else if (chunk.chunk && chunk.chunk.text) {
+        chunkText = chunk.chunk.text;
       }
+      
+      if (chunkText) {
+        content += chunkText + '\n\n';
+      }
+      
+      // Aggregate confidence
+      const chunkConfidence = chunk.confidence || chunk.score || 0.7;
+      totalConfidence += chunkConfidence;
+      
+      // Estimate tokens (rough approximation)
+      totalTokens += Math.ceil(chunkText.length / 4);
     }
-
-    const avgConfidence = stageCount > 0 ? totalConfidence / stageCount : 0.5;
-    const finalContent = content.trim() || `Processed query: ${context.query}`;
-
+    
+    const avgConfidence = processedChunks > 0 ? totalConfidence / processedChunks : 0.5;
+    const finalContent = content.trim() || `No relevant content found for: ${context.query}`;
+    
+    // Store structured data in context metadata for adapter
+    context.metadata = {
+      ...context.metadata,
+      prunedChunks: prunedChunks,
+      searchResults: searchResults,
+      processedChunks: processedChunks
+    };
+    
     return {
       content: finalContent,
       confidence: Math.max(0.1, Math.min(1.0, avgConfidence)),
-      tokensUsed: totalTokens
+      tokensUsed: totalTokens || 500
     };
   }
 
@@ -325,11 +343,11 @@ export class IntegrationOrchestrator {
   private smartCaching: any;
 
   constructor() {
-    // These would be injected in real implementation
+    // Use real implementations
     this.contextSizing = robustQueryProcessor;
-    this.multiStageRetrieval = null; // Would be injected
-    this.hybridSearch = null; // Would be injected
-    this.contextPruning = null; // Would be injected
+    this.multiStageRetrieval = multiStageRetrieval;
+    this.hybridSearch = enhancedHybridSearch;
+    this.contextPruning = null; // Will implement inline as it's not a separate module
     this.smartCaching = improvedMemoryManager;
   }
 
@@ -397,46 +415,136 @@ export class IntegrationOrchestrator {
   }
 
   private async handleMultiStageRetrieval(sizingResult: any, context: PipelineContext): Promise<any> {
-    // Simulate multi-stage retrieval
-    return {
-      results: [
-        {
-          content: `Retrieved content for: ${context.query}`,
-          score: 0.8,
-          confidence: 0.85,
-          source: 'multi-stage-retrieval',
-          metadata: { type: 'retrieved-content' }
-        }
-      ],
-      totalResults: 1,
-      processingTime: 150
-    };
+    if (!this.multiStageRetrieval) {
+      throw new Error('Multi-stage retrieval service not available');
+    }
+    
+    try {
+      // Use the real multi-stage retrieval
+      const results = await this.multiStageRetrieval.retrieve(context.query, {
+        optimalSize: sizingResult.optimalSize || 2000,
+        maxResults: 50,
+        includeMetadata: true
+      });
+      
+      return {
+        results: results,
+        totalResults: results.length,
+        processingTime: Date.now()
+      };
+    } catch (error) {
+      console.error('Multi-stage retrieval failed:', error);
+      throw error;
+    }
   }
 
   private async handleHybridSearch(retrievalResults: any, context: PipelineContext): Promise<any> {
-    // Simulate hybrid search enhancement
-    const results = retrievalResults.results || [];
-    return {
-      results: results.map((result: any) => ({
-        ...result,
-        score: Math.min(1.0, result.score * 1.1), // Boost scores slightly
-        source: 'hybrid-search-enhanced'
-      })),
-      enhancementApplied: true,
-      processingTime: 80
-    };
+    if (!this.hybridSearch) {
+      throw new Error('Hybrid search service not available');
+    }
+    
+    try {
+      // Use the real enhanced hybrid search
+      const enhancedResults = await this.hybridSearch.search(context.query, {
+        existingResults: retrievalResults.results || [],
+        rerank: true,
+        expandQuery: true,
+        maxResults: 30
+      });
+      
+      return {
+        results: enhancedResults,
+        enhancementApplied: true,
+        processingTime: Date.now()
+      };
+    } catch (error) {
+      console.error('Hybrid search enhancement failed:', error);
+      throw error;
+    }
   }
 
   private async handleContextPruning(searchResults: any, context: PipelineContext): Promise<any> {
-    // Simulate context pruning
-    const results = searchResults.results || [];
-    return {
-      prunedChunks: results.slice(0, 5), // Keep top 5 results
-      originalCount: results.length,
-      compressionRate: 1 - (5 / Math.max(results.length, 5)),
-      qualityScore: 0.88,
-      processingTime: 45
-    };
+    try {
+      const results = searchResults.results || [];
+      
+      if (results.length === 0) {
+        return {
+          prunedChunks: [],
+          originalCount: 0,
+          compressionRate: 0,
+          qualityScore: 0,
+          processingTime: 0
+        };
+      }
+      
+      // Intelligent pruning based on relevance and diversity
+      const prunedChunks: any[] = [];
+      const seenTopics = new Set<string>();
+      const maxChunks = Math.min(10, results.length); // Keep top 10 most relevant
+      
+      // Sort by score and select diverse content
+      const sortedResults = [...results].sort((a, b) => (b.score || 0) - (a.score || 0));
+      
+      for (const result of sortedResults) {
+        if (prunedChunks.length >= maxChunks) break;
+        
+        // Extract topic/company from content
+        const content = result.content || result.text || '';
+        const topic = this.extractTopic(content);
+        
+        // Ensure diversity - don't add too many from same topic
+        const topicCount = Array.from(seenTopics).filter(t => t === topic).length;
+        if (topicCount < 3) { // Max 3 chunks per topic
+          prunedChunks.push(result);
+          seenTopics.add(topic);
+        }
+      }
+      
+      // Calculate quality metrics
+      const avgScore = prunedChunks.reduce((sum, chunk) => sum + (chunk.score || 0), 0) / prunedChunks.length;
+      const compressionRate = 1 - (prunedChunks.length / results.length);
+      const diversityScore = seenTopics.size / Math.max(prunedChunks.length, 1);
+      const qualityScore = (avgScore * 0.6) + (diversityScore * 0.4);
+      
+      return {
+        prunedChunks,
+        originalCount: results.length,
+        compressionRate,
+        qualityScore: Math.min(1, qualityScore),
+        processingTime: Date.now(),
+        metrics: {
+          avgScore,
+          diversityScore,
+          topicsFound: Array.from(seenTopics)
+        }
+      };
+    } catch (error) {
+      console.error('Context pruning failed:', error);
+      throw error;
+    }
+  }
+  
+  private extractTopic(content: string): string {
+    // Simple topic extraction based on company names or key terms
+    const lowerContent = content.toLowerCase();
+    
+    // Common company/project patterns
+    const patterns = [
+      /\b(revolut|spotify|volkswagen|google|microsoft|amazon|facebook|meta)\b/gi,
+      /\b(project|projekt):\s*([^-\n]+)/gi,
+      /\b(company|firma):\s*([^-\n]+)/gi
+    ];
+    
+    for (const pattern of patterns) {
+      const match = pattern.exec(lowerContent);
+      if (match) {
+        return match[1] || match[2] || 'general';
+      }
+    }
+    
+    // Fallback to first significant word
+    const words = content.split(/\s+/).filter(w => w.length > 5);
+    return words[0] || 'general';
   }
 
   private async handleSmartCaching(prunedResults: any, context: PipelineContext): Promise<any> {
