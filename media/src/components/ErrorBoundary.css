@@ -1,0 +1,195 @@
+.retro-error-container {
+  background: var(--retro-black);
+  border: 4px outset var(--retro-gray);
+  padding: 2rem;
+  box-shadow: 
+    inset 2px 2px 4px rgba(255, 255, 255, 0.2),
+    inset -2px -2px 4px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(255, 0, 0, 0.3);
+}
+
+.retro-error-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.retro-error-icon {
+  width: 64px;
+  height: 64px;
+  color: var(--retro-red);
+  margin: 0 auto 1rem;
+  animation: retro-blink 1s infinite;
+}
+
+.retro-error-title {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--retro-red);
+  text-shadow: 
+    2px 2px 0 var(--retro-black),
+    4px 4px 8px rgba(255, 0, 0, 0.5);
+  font-family: 'Courier New', monospace;
+  animation: retro-glitch 2s infinite;
+}
+
+.retro-error-content {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.retro-error-message {
+  font-size: 1.5rem;
+  color: var(--retro-yellow);
+  font-weight: bold;
+  margin-bottom: 1rem;
+  animation: retro-blink 2s infinite;
+}
+
+.retro-error-description {
+  color: var(--retro-cyan);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.retro-error-details {
+  background: var(--retro-black);
+  border: 2px inset var(--retro-gray);
+  padding: 1rem;
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.retro-error-details-title {
+  color: var(--retro-hot-pink);
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.retro-error-stack {
+  color: var(--retro-neon-green);
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.retro-error-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.retro-error-button {
+  background: linear-gradient(45deg, 
+    var(--retro-electric-blue) 0%, 
+    var(--retro-cyan) 100%);
+  border: 3px outset var(--retro-gray);
+  color: var(--retro-white);
+  font-family: 'Comic Neue', 'Comic Sans MS', cursive;
+  font-weight: bold;
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 var(--retro-black);
+  display: flex;
+  align-items: center;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  box-shadow: 
+    inset 1px 1px 2px rgba(255, 255, 255, 0.3),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.retro-error-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    inset 1px 1px 2px rgba(255, 255, 255, 0.3),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.3),
+    0 4px 8px rgba(0, 128, 255, 0.3);
+}
+
+.retro-error-button:active {
+  border: 3px inset var(--retro-gray);
+  transform: translateY(0);
+}
+
+.retro-error-button-primary {
+  background: linear-gradient(45deg, 
+    var(--retro-neon-green) 0%, 
+    var(--retro-cyan) 100%);
+}
+
+.retro-error-button-secondary {
+  background: linear-gradient(45deg, 
+    var(--retro-purple) 0%, 
+    var(--retro-hot-pink) 100%);
+}
+
+.retro-error-footer {
+  text-align: center;
+}
+
+.retro-error-ascii {
+  color: var(--retro-gray);
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  white-space: pre;
+  opacity: 0.8;
+}
+
+@keyframes retro-glitch {
+  0% {
+    text-shadow: 
+      2px 2px 0 var(--retro-black),
+      4px 4px 8px rgba(255, 0, 0, 0.5);
+  }
+  25% {
+    text-shadow: 
+      -2px 2px 0 var(--retro-black),
+      -4px 4px 8px rgba(0, 255, 255, 0.5);
+  }
+  50% {
+    text-shadow: 
+      2px -2px 0 var(--retro-black),
+      4px -4px 8px rgba(255, 0, 255, 0.5);
+  }
+  75% {
+    text-shadow: 
+      -2px -2px 0 var(--retro-black),
+      -4px -4px 8px rgba(255, 255, 0, 0.5);
+  }
+  100% {
+    text-shadow: 
+      2px 2px 0 var(--retro-black),
+      4px 4px 8px rgba(255, 0, 0, 0.5);
+  }
+}
+
+@media (max-width: 768px) {
+  .retro-error-container {
+    padding: 1.5rem;
+  }
+  
+  .retro-error-title {
+    font-size: 1.5rem;
+  }
+  
+  .retro-error-message {
+    font-size: 1.2rem;
+  }
+  
+  .retro-error-actions {
+    flex-direction: column;
+  }
+  
+  .retro-error-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

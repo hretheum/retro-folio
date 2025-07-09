@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostics - Retro Portfolio</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #000;
+            color: #0f0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .check {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+        .ok { border-color: #0f0; }
+        .error { border-color: #f00; color: #f00; }
+        pre {
+            background: #111;
+            padding: 10px;
+            overflow-x: auto;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #00ff00aa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛠️ Retro Portfolio Diagnostics</h1>
+        
+        <div id="checks">
+            <div class="check">⏳ Running diagnostics...</div>
+        </div>
+
+        <h2>Actions</h2>
+        <button onclick="checkHealth()">Check API Health</button>
+        <button onclick="checkLastError()">Check Last Error</button>
+        <button onclick="clearLastError()">Clear Last Error</button>
+        <button onclick="triggerTestError()">Trigger Test Error</button>
+        
+        <h2>Results</h2>
+        <pre id="results"></pre>
+    </div>
+
+    <script>
+        const resultsEl = document.getElementById('results');
+        const checksEl = document.getElementById('checks');
+
+        async function checkHealth() {
+            try {
+                const response = await fetch('/api/diagnostics/health');
+                const data = await response.json();
+                resultsEl.textContent = JSON.stringify(data, null, 2);
+                
+                checksEl.innerHTML = '';
+                Object.entries(data.checks).forEach(([key, check]) => {
+                    if (typeof check === 'object' && 'status' in check) {
+                        const div = document.createElement('div');
+                        div.className = `check ${check.status === 'ok' ? 'ok' : 'error'}`;
+                        div.textContent = `${key}: ${check.status} ${check.error ? '- ' + check.error : ''}`;
+                        checksEl.appendChild(div);
+                    }
+                });
+            } catch (error) {
+                resultsEl.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function checkLastError() {
+            const lastError = localStorage.getItem('last_error');
+            if (lastError) {
+                const error = JSON.parse(lastError);
+                resultsEl.textContent = JSON.stringify(error, null, 2);
+                
+                checksEl.innerHTML = `
+                    <div class="check error">
+                        <strong>Last Error:</strong> ${error.error.message}<br>
+                        <strong>Time:</strong> ${error.timestamp}<br>
+                        <strong>URL:</strong> ${error.url}
+                    </div>
+                `;
+            } else {
+                resultsEl.textContent = 'No errors found in localStorage';
+                checksEl.innerHTML = '<div class="check ok">No errors recorded</div>';
+            }
+        }
+
+        function clearLastError() {
+            localStorage.removeItem('last_error');
+            resultsEl.textContent = 'Last error cleared';
+            checksEl.innerHTML = '<div class="check ok">Error storage cleared</div>';
+        }
+
+        function triggerTestError() {
+            try {
+                throw new Error('This is a test error for diagnostics');
+            } catch (error) {
+                window.dispatchEvent(new ErrorEvent('error', {
+                    error: error,
+                    message: error.message,
+                    filename: 'diagnostics-test',
+                    lineno: 0,
+                    colno: 0
+                }));
+                resultsEl.textContent = 'Test error triggered - check console and reload to see if it was caught';
+            }
+        }
+
+        // Auto-check on load
+        checkHealth();
+        checkLastError();
+    </script>
+</body>
+</html>
