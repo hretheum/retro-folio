@@ -9,7 +9,6 @@ const openai = new OpenAI({
 // Build version info
 // @ts-ignore
 const BUILD_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev';
-const BUILD_DATE = new Date().toISOString().split('T')[0];
 
 // Simple in-memory cache for Pinecone results (resets on function cold start)
 const searchCache = new Map<string, { results: any[], timestamp: number }>();
@@ -57,21 +56,28 @@ SPECIAL HANDLING:
   - English: "Sorry, I didn't understand your question. Try asking about my projects, experience, or specific companies?"
 - If context is empty or irrelevant to the question, acknowledge this instead of inventing projects
 
+SKILLS AND COMPETENCIES:
+- When asked about skills ("umiejętności", "skills", "co umiesz", "what can you do"), scan the ENTIRE context for:
+  - Technical skills mentioned in any project
+  - Soft skills and leadership abilities
+  - Design and UX capabilities
+  - Business and strategic skills
+  - Tools and technologies used
+- Create a comprehensive skills overview from ALL projects found in context
+
 Language: Use Polish if user writes in Polish, English otherwise.
 Personality: Be direct, honest, no corporate bullshit.
 
 IMPORTANT DISCLAIMER:
 Always end your response with an appropriate disclaimer in the same language as the user's question:
 - English: "⚠️ Note: This response is based on synthetic AI-generated data for testing our RAG system, not real experience."
-- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."
-
-BUILD VERSION INFO:
-Always include build version at the very end (after disclaimer) in a subtle format:
-- English: "ᴮᵘⁱˡᵈ: [commit-hash] • [date]"
-- Polish: "ᴮᵘⁱˡᵈ: [commit-hash] • [date]"`;
+- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('[CHAT-LLM] Endpoint called');
+  
+  // Generate build date for this request
+  const BUILD_DATE = new Date().toISOString().split('T')[0];
   
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -113,7 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         searchResults = cached.results;
       } else {
         searchResults = await hybridSearchPinecone(enhancedQuery, {
-          topK: 20, // Get many results - let LLM decide what's relevant
+          topK: 50, // Increased from 20 to get more comprehensive results
           namespace: 'production',
           vectorWeight: 0.7 // Default weight for semantic search
         });
@@ -175,12 +181,14 @@ IMPORTANT INSTRUCTIONS:
    - "banki" / "banks" → Show ALL banking/fintech projects found in context
    - "projekty" / "projects" → Show diverse selection of 5-8 projects
    - "inne" / "other" / "więcej" / "more" → Show additional projects not yet shown
+   - "umiejętności" / "skills" → Extract ALL skills from ENTIRE context
    
 4. ALWAYS create SEPARATE blocks for EACH company found in context
 5. Do NOT arbitrarily limit results - if context has 5 banks, show all 5
 6. Group similar projects (e.g., all fintech together) but still show each separately
 7. If user asks about specific domain (finance, design systems, etc.), prioritize those
-8. Include build version info at the very end: ᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}` }
+8. For skills questions, provide comprehensive overview from ALL context
+9. DO NOT add build version info - it will be added automatically` }
     ];
     
     // Get response from OpenAI

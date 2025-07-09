@@ -9,9 +9,6 @@ const openai = new OpenAI({
 // Build version info
 // @ts-ignore
 const BUILD_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev';
-const BUILD_DATE = new Date().toISOString().split('T')[0];
-
-console.log('[BUILD_INFO] Version:', BUILD_VERSION, 'Date:', BUILD_DATE);
 
 // Enhanced cache with TTL and metrics
 const searchCache = new Map<string, { 
@@ -52,6 +49,15 @@ SPECIAL HANDLING:
   - English: "Sorry, I didn't understand your question. Try asking about my projects, experience, or specific companies?"
 - If context is empty or irrelevant to the question, acknowledge this instead of inventing projects
 
+SKILLS AND COMPETENCIES:
+- When asked about skills ("umiejętności", "skills", "co umiesz", "what can you do"), scan the ENTIRE context for:
+  - Technical skills mentioned in any project
+  - Soft skills and leadership abilities
+  - Design and UX capabilities
+  - Business and strategic skills
+  - Tools and technologies used
+- Create a comprehensive skills overview from ALL projects found in context
+
 Language: Use Polish if user writes in Polish, English otherwise.
 Personality: Be direct, honest, no corporate bullshit.
 Response style: Stream naturally, don't wait for complete thoughts.
@@ -59,16 +65,14 @@ Response style: Stream naturally, don't wait for complete thoughts.
 IMPORTANT DISCLAIMER:
 Always end your response with an appropriate disclaimer in the same language as the user's question:
 - English: "⚠️ Note: This response is based on synthetic AI-generated data for testing our RAG system, not real experience."
-- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."
-
-BUILD VERSION INFO:
-Always include build version at the very end (after disclaimer) in a subtle format:
-- English: "ᴮᵘⁱˡᵈ: [commit-hash] • [date]"
-- Polish: "ᴮᵘⁱˡᵈ: [commit-hash] • [date]"`;
+- Polish: "⚠️ Uwaga: Ta odpowiedź opiera się na syntetycznych danych generowanych przez AI do testowania naszego systemu RAG, a nie na prawdziwym doświadczeniu."`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
   totalRequests++;
+  
+  // Generate build date for this request
+  const BUILD_DATE = new Date().toISOString().split('T')[0];
   
   console.log('[CHAT-STREAMING] Endpoint called');
   console.log('[BUILD_INFO] Current build:', BUILD_VERSION, BUILD_DATE);
@@ -111,7 +115,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? `${searchQuery} projects experience work` 
         : searchQuery;
       
-      console.log('[CHAT-STREAMING] Search query:', enhancedQuery);
+      console.log('[CHAT-STREAMING] Original query:', searchQuery);
+      console.log('[CHAT-STREAMING] Enhanced query:', enhancedQuery);
       
       // Enhanced cache checking
       const cacheKey = enhancedQuery.toLowerCase();
@@ -126,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else {
         const searchStart = Date.now();
         searchResults = await hybridSearchPinecone(enhancedQuery, {
-          topK: 20,
+          topK: 50, // Increased from 20 to get more comprehensive results
           namespace: 'production',
           vectorWeight: 0.7
         });
@@ -151,6 +156,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       console.log('[CHAT-STREAMING] Found', searchResults.length, 'search results');
       
+      // Log first few results for debugging
+      searchResults.slice(0, 3).forEach((result, index) => {
+        console.log(`[CHAT-STREAMING] Result ${index + 1} (score: ${result.score}):`);
+        console.log(`[CHAT-STREAMING] Text preview: ${result.chunk.text.substring(0, 150)}...`);
+        console.log(`[CHAT-STREAMING] Metadata:`, result.chunk.metadata);
+      });
+      
       if (searchResults.length > 0) {
         // Enhanced deduplication with similarity scoring
         const seenContent = new Set<string>();
@@ -165,9 +177,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return true;
         });
         
+        console.log(`[CHAT-STREAMING] After deduplication: ${diverseResults.length} unique results`);
+        
         context = diverseResults
           .map(r => r.chunk.text)
           .join('\n\n---\n\n');
+          
+        console.log(`[CHAT-STREAMING] Total context length: ${context.length} characters`);
       }
     } catch (searchError) {
       console.error('[CHAT-STREAMING] Pinecone search error:', searchError);
@@ -186,10 +202,11 @@ USER QUESTION: ${lastMessage.content}
 IMPORTANT INSTRUCTIONS:
 1. If the question seems nonsensical or unrelated to portfolio/experience, respond politely as instructed
 2. If context is empty or irrelevant, acknowledge this instead of inventing information
-3. ALWAYS create SEPARATE blocks for EACH company found in context
-4. Stream your response naturally - don't wait for complete thoughts
-5. Use the button-prompt format for interactive elements
-6. Include build version info at the very end: ᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}` }
+3. For skills questions, extract ALL skills from ENTIRE context, not just one project
+4. ALWAYS create SEPARATE blocks for EACH company found in context
+5. Stream your response naturally - don't wait for complete thoughts
+6. Use the button-prompt format for interactive elements
+7. DO NOT add build version info - it will be added automatically` }
     ];
     
     // Create streaming completion
