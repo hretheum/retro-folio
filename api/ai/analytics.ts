@@ -49,7 +49,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await client.connect();
 
     // Get current stats
-    const currentStats = await client.hGetAll('chat-stats:current');
+    const currentStatsRaw = await client.hGetAll('chat-stats:current');
+    const currentStats: Record<string, string> = {};
+    
+    // Convert Redis result to Record<string, string>
+    if (currentStatsRaw && typeof currentStatsRaw === 'object') {
+      // Handle both Map and object cases
+      if (currentStatsRaw instanceof Map) {
+        currentStatsRaw.forEach((value, key) => {
+          currentStats[key] = String(value);
+        });
+      } else {
+        // Handle object case
+        for (const [key, value] of Object.entries(currentStatsRaw)) {
+          currentStats[key] = String(value);
+        }
+      }
+    }
     
     // Get last 7 days of metrics
     const last7Days = [];
@@ -72,14 +88,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const feedbackStatsRaw = await client.hGetAll('chat-feedback:stats');
     const feedbackStats: Record<string, string> = {};
     
-    // Convert Buffer values to strings if necessary
-    if (Array.isArray(feedbackStatsRaw)) {
-      // Handle array case - should not happen with hGetAll but type safety
-      console.warn('Unexpected array result from hGetAll');
-    } else {
-      // Handle Map case
-      for (const [key, value] of Object.entries(feedbackStatsRaw)) {
-        feedbackStats[key] = String(value);
+    // Convert Redis result to Record<string, string>
+    if (feedbackStatsRaw && typeof feedbackStatsRaw === 'object') {
+      // Handle both Map and object cases
+      if (feedbackStatsRaw instanceof Map) {
+        feedbackStatsRaw.forEach((value, key) => {
+          feedbackStats[key] = String(value);
+        });
+      } else {
+        // Handle object case
+        for (const [key, value] of Object.entries(feedbackStatsRaw)) {
+          feedbackStats[key] = String(value);
+        }
       }
     }
 
