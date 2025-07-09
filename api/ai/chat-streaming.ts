@@ -109,6 +109,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let cacheHit = false;
     let searchResults: any[] = [];
     
+    // TODO: Replace with IntegrationOrchestrator for true 100% SR context management
+    // The current implementation uses simple hybridSearchPinecone without:
+    // - context sizing optimization
+    // - multi-stage retrieval
+    // - intelligent context pruning
+    // - robust error handling with fallbacks
+    // See /lib/integration-orchestrator.ts for the full implementation
+    
     try {
       const searchQuery = lastMessage.content;
       const enhancedQuery = searchQuery.split(' ').length < 3 

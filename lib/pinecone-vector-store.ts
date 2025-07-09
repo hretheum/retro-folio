@@ -115,11 +115,20 @@ export async function hybridSearchPinecone(
 ): Promise<SearchResult[]> {
   const { topK = 5, namespace = 'default', vectorWeight = 0.7 } = options;
   
+  console.log('[HYBRID-SEARCH] Starting search:', {
+    query,
+    topK,
+    namespace,
+    vectorWeight
+  });
+  
   // Get vector search results
   const vectorResults = await semanticSearchPinecone(query, {
     topK: topK * 2, // Get more for reranking
     namespace,
   });
+  
+  console.log(`[HYBRID-SEARCH] Vector search returned ${vectorResults.length} results`);
   
   // Rerank based on keyword matching in metadata
   const queryLower = query.toLowerCase();
@@ -145,7 +154,11 @@ export async function hybridSearchPinecone(
   });
   
   // Sort by combined score and return top K
-  return rerankedResults
+  const finalResults = rerankedResults
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
+    
+  console.log(`[HYBRID-SEARCH] Returning ${finalResults.length} results after reranking`);
+  
+  return finalResults;
 }
