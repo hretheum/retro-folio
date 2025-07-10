@@ -503,14 +503,14 @@ export class ContextPruner {
       
       // Step 3: Progressive pruning to reach target tokens
       let currentTokens = originalTokens;
-      let prunedChunks = sortedChunks.map(chunk => ({
+      let prunedChunks: ContextChunk[] = sortedChunks.map(chunk => ({
         id: chunk.id,
         content: chunk.content,
         metadata: chunk.metadata,
         score: chunk.score, // Preserve original score
         tokens: chunk.tokens,
         source: chunk.source,
-        stage: chunk.stage || undefined
+        stage: chunk.stage
       }));
       
       while (currentTokens > targetTokens && prunedChunks.length > 1) {
