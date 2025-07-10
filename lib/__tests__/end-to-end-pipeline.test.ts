@@ -85,9 +85,9 @@ describe('End-to-End Pipeline Tests - Phase 4 Validation', () => {
       expect(response.metadata.processingSteps.some(step => step.includes('generation') || step.includes('response'))).toBe(true);
       
       // Verify performance metrics
-      expect(response.performance.retrievalTime).toBeGreaterThanOrEqual(0);
-      expect(response.performance.compressionTime).toBeGreaterThanOrEqual(0);
-      expect(response.performance.generationTime).toBeGreaterThan(0);
+      expect(response.processingTime).toBeGreaterThanOrEqual(0);
+      expect(response.metadata.processingSteps).toContain('retrieval');
+      expect(response.metadata.processingSteps).toContain('generation');
       
       // Verify response quality
       expectValidConfidence(response.confidence);
@@ -426,10 +426,10 @@ describe('End-to-End Pipeline Tests - Phase 4 Validation', () => {
       expect(response.metadata).toHaveProperty('processingSteps');
       
       // Verify performance structure
-      expect(response.performance).toHaveProperty('retrievalTime');
-      expect(response.performance).toHaveProperty('compressionTime');
-      expect(response.performance).toHaveProperty('cacheTime');
-      expect(response.performance).toHaveProperty('generationTime');
+      expect(response.metadata).toHaveProperty('processingSteps');
+      expect(response.metadata).toHaveProperty('cacheHit');
+      expect(response.metadata).toHaveProperty('contextSize');
+      expect(response.metadata).toHaveProperty('totalTokens');
     });
     
     it('should handle conversation memory', async () => {

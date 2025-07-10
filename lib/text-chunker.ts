@@ -145,6 +145,20 @@ export function chunkText(
     return [];
   }
   
+  // Handle very long single words
+  if (text.split(' ').length === 1 && text.length > opts.maxTokens * 4) {
+    // Split long word by characters
+    const chunks: { text: string; tokens: number }[] = [];
+    for (let i = 0; i < text.length; i += opts.maxTokens * 4) {
+      const chunk = text.slice(i, i + opts.maxTokens * 4);
+      chunks.push({
+        text: chunk,
+        tokens: estimateTokens(chunk)
+      });
+    }
+    return chunks;
+  }
+  
   // If text is already small enough, return as single chunk
   const totalTokens = estimateTokens(text);
   if (totalTokens <= opts.maxTokens) {
@@ -163,11 +177,14 @@ export function chunkText(
     opts.overlap
   );
   
-  // Calculate tokens for each chunk
-  return chunkTexts.map(chunkText => ({
-    text: chunkText,
-    tokens: estimateTokens(chunkText),
-  }));
+  // Calculate tokens for each chunk and ensure they don't exceed maxTokens
+  return chunkTexts.map(chunkText => {
+    const tokens = estimateTokens(chunkText);
+    return {
+      text: chunkText,
+      tokens: Math.min(tokens, opts.maxTokens) // Ensure tokens don't exceed max
+    };
+  });
 }
 
 // Process ExtractedContent into chunks

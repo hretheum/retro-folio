@@ -8,17 +8,17 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
   
   // Enhanced Polish patterns with better precision
   const polishPatterns = {
-    synthesis: /co potrafisz|jakie są.*umiejętności|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj|jakie masz|twoje umiejętności|kompetencje|potrafisz|twoje kompetencje|jakie masz umiejętności|twoje umiejętności|jakie masz kompetencje|jakie są twoje/,
-    exploration: /opowiedz|więcej|szczegół|jak.*proces|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób|doświadczenie|projekt|pracowałeś|byłeś|opowiedz o|tell me about|jak.*handle|co.*handle|opowiedz.*projekt|opowiedz.*Volkswagen|opowiedz o/,
-    comparison: /porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne|które.*bardziej|co lepsze|podobieństwa|what is better|which.*more|bardziej challenging|podobieństwa między|różnice między|które.*bardziej|co lepsze/,
+    synthesis: /co potrafisz|jakie są.*umiejętności|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj|jakie masz|twoje umiejętności|kompetencje|potrafisz|twoje kompetencje|jakie masz umiejętności|twoje umiejętności|jakie masz kompetencje|jakie są twoje|jakie są twoje umiejętności|twoje umiejętności|jakie masz kompetencje/,
+    exploration: /opowiedz|więcej|szczegół|jak.*proces|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób|doświadczenie|projekt|pracowałeś|byłeś|opowiedz o|tell me about|jak.*handle|co.*handle|opowiedz.*projekt|opowiedz.*Volkswagen|opowiedz o|opowiedz.*więcej|opowiedz.*o.*projekcie/,
+    comparison: /porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne|które.*bardziej|co lepsze|podobieństwa|what is better|which.*more|bardziej challenging|podobieństwa między|różnice między|które.*bardziej|co lepsze|które.*bardziej|bardziej challenging/,
     factual: /ile(?!\s+razy)|kiedy|gdzie|kto|która|które|jakie(?!\s+są.*umiejętności)|jaki(?!\s+sposób)|data|rok|liczba|wiek|czas|długo|dużo|mało|konkretnie|dokładnie|precyzyjnie|faktycznie/
   };
   
   // Enhanced English patterns with better precision
   const englishPatterns = {
-    synthesis: /what.*(can|are|do)|competenc|skill|capabilit|overview|summariz|review|present|characterize|analyz|assess|evaluat|your.*skill|abilities|expertise|your competencies|what skills do you have|your skills|what are your/,
-    exploration: /tell.*more|detail|how.*(process|work)|why|history|methodology|explain|describe|expand|elaborate|what.*happen|experience|project|worked|were|tell me about|how.*handle|what.*handle|tell me about.*experience|tell me about/,
-    comparison: /versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between|which.*more|what.*better|similarities|more challenging|similarities between|differences between|what is better|which.*more/,
+    synthesis: /what.*(can|are|do)|competenc|skill|capabilit|overview|summariz|review|present|characterize|analyz|assess|evaluat|your.*skill|abilities|expertise|your competencies|what skills do you have|your skills|what are your|your skills|what skills do you have/,
+    exploration: /tell.*more|detail|how.*(process|work)|why|history|methodology|explain|describe|expand|elaborate|what.*happen|experience|project|worked|were|tell me about|how.*handle|what.*handle|tell me about.*experience|tell me about|tell me about.*experience/,
+    comparison: /versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between|which.*more|what.*better|similarities|more challenging|similarities between|differences between|what is better|which.*more|more challenging/,
     factual: /how\s+(much|many|long|old)|when|where|who|what(?!\s+are.*skill)|which|date|year|number|age|time|specific|exact|precise|fact/
   };
   
