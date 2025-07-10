@@ -28,12 +28,6 @@ export interface ChatResponse {
     sources: string[];
     processingSteps: string[];
   };
-  performance: {
-    retrievalTime: number;
-    compressionTime: number;
-    cacheTime: number;
-    generationTime: number;
-  };
 }
 
 export interface ProcessingStats {
@@ -394,12 +388,6 @@ export class UnifiedIntelligentChat {
           processingSteps: this.processingStats.map(stat => 
             `${stat.stage}: ${stat.duration.toFixed(2)}ms (${stat.success ? 'success' : 'failed'})`
           )
-        },
-        performance: {
-          retrievalTime: retrieval.processingTime,
-          compressionTime: compression.processingTime,
-          cacheTime: retrieval.cacheHit ? retrieval.processingTime : 0,
-          generationTime: generation.processingTime
         }
       };
       
@@ -418,12 +406,6 @@ export class UnifiedIntelligentChat {
           totalTokens: 0,
           sources: [],
           processingSteps: ['error: ' + error.message]
-        },
-        performance: {
-          retrievalTime: 0,
-          compressionTime: 0,
-          cacheTime: 0,
-          generationTime: 0
         }
       };
     }

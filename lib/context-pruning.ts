@@ -495,15 +495,23 @@ export class ContextPruner {
       // Step 1: Calculate attention scores for all chunks
       const chunksWithAttention = chunks.map(chunk => ({
         ...chunk,
-        score: this.calculateAttentionScore(chunk, userQuery, chunks, config)
+        attentionScore: this.calculateAttentionScore(chunk, userQuery, chunks, config)
       }));
       
       // Step 2: Sort by attention score
-      const sortedChunks = chunksWithAttention.sort((a, b) => b.score - a.score);
+      const sortedChunks = chunksWithAttention.sort((a, b) => b.attentionScore - a.attentionScore);
       
       // Step 3: Progressive pruning to reach target tokens
       let currentTokens = originalTokens;
-      let prunedChunks = [...sortedChunks];
+      let prunedChunks = sortedChunks.map(chunk => ({
+        id: chunk.id,
+        content: chunk.content,
+        metadata: chunk.metadata,
+        score: chunk.score, // Preserve original score
+        tokens: chunk.tokens,
+        source: chunk.source,
+        stage: chunk.stage || undefined
+      }));
       
       while (currentTokens > targetTokens && prunedChunks.length > 1) {
         // Remove the lowest scoring chunk

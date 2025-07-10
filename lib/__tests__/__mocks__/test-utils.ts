@@ -75,12 +75,6 @@ export function createMockChatResponse(overrides = {}) {
       sources: ['test-source'],
       processingSteps: ['query-analysis', 'retrieval', 'generation']
     },
-    performance: {
-      retrievalTime: 300,
-      compressionTime: 100,
-      cacheTime: 0,
-      generationTime: 600
-    },
     ...overrides
   };
 }

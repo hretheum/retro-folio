@@ -8,26 +8,21 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
   
   // Enhanced Polish patterns with better precision
   const polishPatterns = {
-    synthesis: /co potrafisz|jakie są.*umiejętności|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj/,
-    exploration: /opowiedz|więcej|szczegół|jak.*proces|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób/,
-    comparison: /porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne/,
-    factual: /ile(?!\s+razy)|kiedy|gdzie|kto|która|które|jakie(?!\s+są)|jaki(?!\s+sposób)|data|rok|liczba|wiek|czas|długo|dużo|mało|konkretnie|dokładnie|precyzyjnie|faktycznie/
+    synthesis: /co potrafisz|jakie są.*umiejętności|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj|jakie masz|twoje umiejętności|kompetencje|potrafisz|twoje kompetencje|jakie masz umiejętności|twoje umiejętności|jakie masz kompetencje/,
+    exploration: /opowiedz|więcej|szczegół|jak.*proces|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób|doświadczenie|projekt|pracowałeś|byłeś|opowiedz o|tell me about|jak.*handle|co.*handle|opowiedz.*projekt|opowiedz.*Volkswagen/,
+    comparison: /porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne|które.*bardziej|co lepsze|podobieństwa|what is better|which.*more|bardziej challenging|podobieństwa między|różnice między/,
+    factual: /ile(?!\s+razy)|kiedy|gdzie|kto|która|które|jakie(?!\s+są.*umiejętności)|jaki(?!\s+sposób)|data|rok|liczba|wiek|czas|długo|dużo|mało|konkretnie|dokładnie|precyzyjnie|faktycznie/
   };
   
   // Enhanced English patterns with better precision
   const englishPatterns = {
-    synthesis: /what.*(can|are|do)|competenc|skill|capabilit|overview|summariz|review|present|characterize|analyz|assess|evaluat/,
-    exploration: /tell.*more|detail|how.*(process|work)|why|history|methodology|explain|describe|expand|elaborate|what.*happen/,
-    comparison: /versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between/,
-    factual: /how\s+(much|many|long|old)|when|where|who|what(?!\s+are)|which|date|year|number|age|time|specific|exact|precise|fact/
+    synthesis: /what.*(can|are|do)|competenc|skill|capabilit|overview|summariz|review|present|characterize|analyz|assess|evaluat|your.*skill|abilities|expertise|your competencies|what skills do you have|your skills/,
+    exploration: /tell.*more|detail|how.*(process|work)|why|history|methodology|explain|describe|expand|elaborate|what.*happen|experience|project|worked|were|tell me about|how.*handle|what.*handle|tell me about.*experience/,
+    comparison: /versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between|which.*more|what.*better|similarities|more challenging|similarities between|differences between/,
+    factual: /how\s+(much|many|long|old)|when|where|who|what(?!\s+are.*skill)|which|date|year|number|age|time|specific|exact|precise|fact/
   };
   
-  // Test for factual queries first (most specific)
-  if (polishPatterns.factual.test(query) || englishPatterns.factual.test(query)) {
-    return 'FACTUAL';
-  }
-  
-  // Test for synthesis queries
+  // Test for synthesis queries first (highest priority for skills/competencies)
   if (polishPatterns.synthesis.test(query) || englishPatterns.synthesis.test(query)) {
     return 'SYNTHESIS';
   }
@@ -40,6 +35,11 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
   // Test for comparison queries
   if (polishPatterns.comparison.test(query) || englishPatterns.comparison.test(query)) {
     return 'COMPARISON';
+  }
+  
+  // Test for factual queries (most specific, but lower priority)
+  if (polishPatterns.factual.test(query) || englishPatterns.factual.test(query)) {
+    return 'FACTUAL';
   }
   
   // Default to casual for simple greetings, short queries, or unclear intent
@@ -198,11 +198,11 @@ export function getOptimalContextSize(userQuery: string, queryLength: number = 0
       topKMultiplier: 0.8
     },
     EXPLORATION: {
-      maxTokens: 1200,
-      chunkCount: 6,
+      maxTokens: 1400,
+      chunkCount: 7,
       diversityBoost: true,
       queryExpansion: true,
-      topKMultiplier: 1.5
+      topKMultiplier: 1.8
     },
     COMPARISON: {
       maxTokens: 1800,
@@ -235,10 +235,10 @@ export function getOptimalContextSize(userQuery: string, queryLength: number = 0
     config.topKMultiplier *= 0.9;
   }
   
-  // Ensure minimums
-  config.maxTokens = Math.max(config.maxTokens, 300);
-  config.chunkCount = Math.max(config.chunkCount, 1);
-  config.topKMultiplier = Math.max(config.topKMultiplier, 0.5);
+  // Ensure minimums and maximums
+  config.maxTokens = Math.max(Math.min(config.maxTokens, 4000), 300);
+  config.chunkCount = Math.max(Math.min(config.chunkCount, 20), 1);
+  config.topKMultiplier = Math.max(Math.min(config.topKMultiplier, 5.0), 0.5);
   
   return config;
 }
