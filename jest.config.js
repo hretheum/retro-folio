@@ -4,7 +4,9 @@ export default {
   testEnvironment: 'jsdom',
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-    '\\.(jpg|jpeg|png|gif|svg|mp3)$': '<rootDir>/src/__mocks__/fileMock.js'
+    '\\.(jpg|jpeg|png|gif|svg|mp3)$': '<rootDir>/src/__mocks__/fileMock.js',
+    '^vectra$': '<rootDir>/src/__mocks__/vectraMock.js',
+    '^redis$': '<rootDir>/src/__mocks__/redisMock.js'
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   testMatch: [
@@ -24,8 +26,5 @@ export default {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: 'tsconfig.test.json'
     }]
-  },
-  transformIgnorePatterns: [
-    'node_modules/(?!(vectra|cheerio|redis)/)'
-  ]
+  }
 };
