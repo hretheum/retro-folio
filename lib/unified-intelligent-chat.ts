@@ -114,14 +114,14 @@ export class UnifiedIntelligentChat {
       });
       
       // Convert search results to ContextChunk format
-      const chunks: ContextChunk[] = searchResults.map(result => ({
-        id: result.chunk.id,
-        content: result.chunk.text,
-        metadata: result.chunk.metadata,
-        score: result.relevanceFactors.final,
-        tokens: Math.ceil(result.chunk.text.length / 4), // Rough token estimation
-        source: result.chunk.metadata?.contentId || 'unknown',
-        stage: result.searchStage
+      const chunks: ContextChunk[] = searchResults.map((result, index) => ({
+        id: result.chunk?.id || `chunk-${Date.now()}-${index}`,
+        content: result.chunk?.text || '',
+        metadata: result.chunk?.metadata || {},
+        score: result.relevanceFactors?.final || result.score || 0,
+        tokens: Math.ceil((result.chunk?.text || '').length / 4), // Rough token estimation
+        source: result.chunk?.metadata?.contentId || 'unknown',
+        stage: result.searchStage || 'hybrid-search'
       }));
       
       const searchTime = performance.now() - searchStart;
@@ -135,14 +135,14 @@ export class UnifiedIntelligentChat {
         const fallbackStart = performance.now();
         
         const multiStageResult = await this.multiStageRetrieval.search(userQuery);
-        const fallbackChunks: ContextChunk[] = multiStageResult.finalChunks.map(chunk => ({
-          id: chunk.chunk?.id || `fallback-${Date.now()}`,
-          content: chunk.chunk?.text || '',
-          metadata: chunk.chunk?.metadata || {},
+        const fallbackChunks: ContextChunk[] = multiStageResult.finalChunks.map((chunk, index) => ({
+          id: `fallback-${Date.now()}-${index}`,
+          content: chunk.content || '',
+          metadata: chunk.metadata || {},
           score: chunk.score,
-          tokens: Math.ceil((chunk.chunk?.text.length || 0) / 4),
-          source: chunk.chunk?.metadata?.contentId || 'fallback',
-          stage: multiStageResult.bestStage
+          tokens: Math.ceil((chunk.content || '').length / 4),
+          source: chunk.source || 'fallback',
+          stage: chunk.stage
         }));
         
         const fallbackTime = performance.now() - fallbackStart;

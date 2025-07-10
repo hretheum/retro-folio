@@ -235,16 +235,20 @@ export class ContextPruner {
     // Sort chunks by their original position/metadata to maintain logical flow
     const sortedChunks = [...chunks].sort((a, b) => {
       // First by content type priority
-      const typeOrder = { 'work': 1, 'leadership': 2, 'experiment': 3, 'timeline': 4, 'contact': 5 };
-      const aOrder = typeOrder[a.metadata?.contentType] || 999;
-      const bOrder = typeOrder[b.metadata?.contentType] || 999;
+      const typeOrder: Record<string, number> = { 'work': 1, 'leadership': 2, 'experiment': 3, 'timeline': 4, 'contact': 5 };
+      const aContentType = a.metadata?.contentType as string;
+      const bContentType = b.metadata?.contentType as string;
+      const aOrder = typeOrder[aContentType] || 999;
+      const bOrder = typeOrder[bContentType] || 999;
       
       if (aOrder !== bOrder) return aOrder - bOrder;
       
-      // Then by date (newest first)
-      if (a.metadata?.date && b.metadata?.date) {
-        return new Date(b.metadata.date).getTime() - new Date(a.metadata.date).getTime();
-      }
+              // Then by date (newest first)
+        if (a.metadata?.date && b.metadata?.date) {
+          const aDate = a.metadata.date as string | number;
+          const bDate = b.metadata.date as string | number;
+          return new Date(bDate).getTime() - new Date(aDate).getTime();
+        }
       
       // Finally by score
       return b.score - a.score;
@@ -349,7 +353,8 @@ export class ContextPruner {
       
       // Calculate diversity score
       const isContentTypeDiverse = !contentTypesSeen.has(contentType);
-      const hasDiverseTech = technologies.some(tech => !technologiesSeen.has(tech));
+      const techArray = Array.isArray(technologies) ? technologies : [];
+      const hasDiverseTech = techArray.some(tech => !technologiesSeen.has(tech));
       
       const diversityScore = (isContentTypeDiverse ? 0.5 : 0) + (hasDiverseTech ? 0.5 : 0);
       
@@ -358,7 +363,7 @@ export class ContextPruner {
         pruned.push(chunk);
         
         if (contentType) contentTypesSeen.add(contentType);
-        technologies.forEach(tech => technologiesSeen.add(tech));
+        techArray.forEach(tech => technologiesSeen.add(tech));
       }
     }
     
