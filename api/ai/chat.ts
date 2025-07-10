@@ -1,9 +1,83 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { hybridSearchPinecone } from '../../lib/pinecone-vector-store';
+import OpenAI from 'openai';
+import { chatContextAdapter } from '../../lib/chat-context-adapter';
 
-// Eryk's knowledge base for context
-const ERYK_CONTEXT = `
-You are Eryk AI, representing Eryk Orłowski in job interviews and professional conversations.
+// Build version info for tracking
+const BUILD_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev';
+const BUILD_DATE = new Date().toISOString();
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface QueryIntent {
+  type: 'skillset' | 'project' | 'leadership' | 'technical' | 'comparison' | 'exploration' | 'general';
+  confidence: number;
+  language: 'polish' | 'english';
+  complexity: 'simple' | 'complex';
+}
+
+/**
+ * Intelligent intent detection for dynamic prompt generation
+ */
+function detectQueryIntent(query: string): QueryIntent {
+  const lowerQuery = query.toLowerCase();
+  const isPolish = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(query) || 
+                   lowerQuery.includes('cześć') ||
+                   lowerQuery.includes('dzień dobry') ||
+                   lowerQuery.includes('umiejętności') ||
+                   lowerQuery.includes('kompetencje') ||
+                   lowerQuery.includes('potrafisz');
+
+  // Intent classification
+  let type: QueryIntent['type'] = 'general';
+  let confidence = 0.7;
+  let complexity: 'simple' | 'complex' = 'simple';
+
+  if (lowerQuery.match(/umiejętności|kompetencje|potrafisz|skills|expertise|technologies|tech stack/i)) {
+    type = 'skillset';
+    confidence = 0.95;
+  } else if (lowerQuery.match(/projekt|project|volkswagen|vw|polsat|tvp|hireverse|allegro|mbank|revolut/i)) {
+    type = 'project';
+    confidence = 0.9;
+  } else if (lowerQuery.match(/zespół|team|lead|leadership|zarządzanie|management|przywództwo/i)) {
+    type = 'leadership';
+    confidence = 0.9;
+  } else if (lowerQuery.match(/technologie|technologies|react|typescript|ai|ml|design|figma|sketch/i)) {
+    type = 'technical';
+    confidence = 0.85;
+  } else if (lowerQuery.match(/porównaj|compare|różnica|difference|vs|versus/i)) {
+    type = 'comparison';
+    confidence = 0.8;
+    complexity = 'complex';
+  } else if (lowerQuery.match(/opowiedz|tell me|więcej|more|szczegół|detail|jak|how|dlaczego|why/i)) {
+    type = 'exploration';
+    confidence = 0.8;
+  }
+
+  // Detect complex queries
+  if (query.length > 100 || lowerQuery.includes('porównaj') || lowerQuery.includes('compare')) {
+    complexity = 'complex';
+  }
+
+  return {
+    type,
+    confidence,
+    language: isPolish ? 'polish' : 'english',
+    complexity
+  };
+}
+
+/**
+ * Dynamic system prompt based on detected intent
+ */
+function buildDynamicSystemPrompt(intent: QueryIntent): string {
+  const basePrompt = `You are Eryk AI - intelligent assistant representing Eryk Orłowski.
 
 CORE IDENTITY:
 - 20 years of experience in digital product design
@@ -23,200 +97,111 @@ PREFERENCES:
 - Remote/hybrid work strongly preferred (dealbreaker if full office)
 - Servant leadership approach
 - Outcome-based management over micromanagement
-- Small to medium teams (10-50 people ideal)
+- Small to medium teams (10-50 people ideal)`;
 
+  const intentSpecificPrompt = (() => {
+    switch (intent.type) {
+      case 'skillset':
+        return `
+INTENT: SKILLSET ANALYSIS
 INSTRUCTIONS:
-1. Use the context from Pinecone search results to answer questions
-2. Be specific and reference actual projects/experiences when possible
-3. If the context doesn't contain relevant information, use general knowledge but stay in character
-4. Always maintain Eryk's direct, no-bullshit communication style
-`;
+- Extract ALL skills from the ENTIRE context provided
+- Group skills by categories (Design, Leadership, Technologies, etc.)
+- Be comprehensive - don't miss any mentioned skills
+- Use bullet points for clarity
+- Include both technical and soft skills
+- Reference specific projects where skills were demonstrated`;
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
+      case 'project':
+        return `
+INTENT: PROJECT DETAILS
+INSTRUCTIONS:
+- Focus on specific project details from context
+- Include role, achievements, technologies used
+- Mention team size and impact metrics
+- Use button-prompt format for interactive elements
+- Structure by company/project with clear sections`;
 
-function formatProjectResponse(projectName: string, achievements: string[], isPolish: boolean): string {
-  // Limit to top 4 achievements per project for better readability
-  const topAchievements = achievements
-    .filter(a => a.length > 10)
-    .slice(0, 4)
-    .map(a => `• ${a.trim()}`)
-    .join('\n');
-  
-  const tellMeMore = isPolish ? 'Opowiedz mi więcej' : 'Tell me more';
-  
-  return `**[Projekt: ${projectName}]**
+      case 'leadership':
+        return `
+INTENT: LEADERSHIP APPROACH
+INSTRUCTIONS:
+- Explain leadership philosophy and approach
+- Reference specific team management experiences
+- Include metrics like team growth, retention rates
+- Emphasize servant leadership and autonomy
+- Share lessons learned and management style`;
 
-${topAchievements}
+      case 'technical':
+        return `
+INTENT: TECHNICAL EXPERTISE
+INSTRUCTIONS:
+- List all technologies and tools mentioned
+- Include proficiency levels where indicated
+- Group by categories (Design Tools, Programming, AI/ML, etc.)
+- Reference specific projects where technologies were used
+- Include both current and historical tech stack`;
 
-<button-prompt="${projectName}">${tellMeMore} →</button-prompt>`;
-}
+      case 'comparison':
+        return `
+INTENT: COMPARATIVE ANALYSIS
+INSTRUCTIONS:
+- Compare different projects, companies, or approaches
+- Identify patterns and differences
+- Provide insights on what worked and why
+- Use structured comparison format
+- Include lessons learned from different experiences`;
 
-interface ProjectData {
-  name: string;
-  role?: string;
-  achievements: string[];
-}
+      case 'exploration':
+        return `
+INTENT: DETAILED EXPLORATION
+INSTRUCTIONS:
+- Provide comprehensive, detailed responses
+- Include context, background, and outcomes
+- Tell stories and share experiences
+- Use natural, conversational tone
+- Encourage follow-up questions with button-prompts`;
 
-function extractMultipleProjects(context: string): ProjectData[] {
-  const lines = context.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  const projects: ProjectData[] = [];
-  
-  // Known project patterns - match company name and role at the beginning of line
-  const projectPatterns = [
-    // Match: "Company Name Role" where role is at the end
-    /^([\w\s]+?)\s+(Senior Product Designer|Product Designer|Design Lead|Lead Designer|Design Systems? Consultant|Product Design Consultant|Contract Product Designer)(?:\s|$)/i,
-    // Match specific known companies
-    /^(Volkswagen Digital|Polsat Box Go|TVP VOD|ING Bank|Hireverse|Allegro|mBank|Revolut|Spotify|GitLab|Cognition Labs)(?:\s+(.+?))?(?:\s+(?:Jako|Pracowałem|Projektowałem|Konsultowałem)|\s*$)/i
-  ];
-  
-  let currentProject: ProjectData | null = null;
-  
-  for (const line of lines) {
-    // Check if this line is a new project header
-    let isNewProject = false;
-    
-    for (const pattern of projectPatterns) {
-      const match = line.match(pattern);
-      if (match) {
-        // Save previous project if exists
-        if (currentProject && currentProject.achievements.length > 0) {
-          projects.push(currentProject);
-        }
-        
-        // Start new project
-        const companyName = match[1].trim();
-        const role = match[2] ? match[2].trim() : '';
-        
-        currentProject = {
-          name: companyName,
-          role: role || undefined,
-          achievements: []
-        };
-        isNewProject = true;
-        break;
-      }
+      default:
+        return `
+INTENT: GENERAL CONVERSATION
+INSTRUCTIONS:
+- Provide helpful, informative responses
+- Use context when available
+- Maintain Eryk's direct communication style
+- Ask clarifying questions when needed
+- Guide conversation toward specific topics of interest`;
     }
-    
-    // If not a new project header and we have a current project, check if it's an achievement
-    if (!isNewProject && currentProject) {
-      // Skip lines that are just project names repeated
-      if (line.toLowerCase().includes(currentProject.name.toLowerCase()) && line.length < 50) {
-        continue;
-      }
-      
-      // Check if line describes an achievement
-      if (line.length > 30 && (
-        line.match(/\d+|%|scaled|improved|created|built|reduced|designed|implemented|developed|led|managed|osiągnęliśmy|zaprojektowałem|stworzyłem|wprowadziłem|zbudowałem/i) ||
-        line.includes('•') ||
-        line.includes('-')
-      )) {
-        // Clean up the line
-        const cleanLine = line.replace(/^[•\-\*]\s*/, '').trim();
-        if (cleanLine.length > 20) {
-          currentProject.achievements.push(cleanLine);
-        }
-      }
-    }
-  }
-  
-  // Don't forget the last project
-  if (currentProject && currentProject.achievements.length > 0) {
-    projects.push(currentProject);
-  }
-  
-  return projects;
-}
+  })();
 
-function generateResponse(userMessage: string, context: string, messages: Message[]): string {
-  // Analyze if the message is in Polish
-  const isPolish = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(userMessage) || 
-                   userMessage.toLowerCase().includes('cześć') ||
-                   userMessage.toLowerCase().includes('dzień dobry');
-  
-  const msg = userMessage.toLowerCase();
-  
-  // If we have relevant context from Pinecone, use it intelligently
-  if (context && context.length > 100) {
-    // Clean up the context - remove duplicate lines and short fragments
-    const contextLines = context.split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 20) // Remove very short fragments
-      .filter((line, index, self) => self.indexOf(line) === index); // Remove duplicates
-    
-    const cleanContext = contextLines.join('\n\n');
-    
-    // Try to extract multiple projects for better formatting
-    const projects = extractMultipleProjects(context);
-    
-    // If we found projects, format them properly
-    if (projects.length > 0) {
-      const intro = isPolish 
-        ? 'Oto moje doświadczenie:\n\n'
-        : "Here's my experience:\n\n";
-      
-      const projectResponses = projects.map(project => {
-        const projectTitle = project.role 
-          ? `${project.name} - ${project.role}`
-          : project.name;
-        
-        return formatProjectResponse(projectTitle, project.achievements, isPolish);
-      }).join('\n\n');
-      
-      return intro + projectResponses;
-    }
-    
-    // For questions about Hireverse specifically
-    if (msg.includes('hireverse')) {
-      const achievements = [
-        isPolish ? 'Platforma AI do rekrutacji która odwraca tradycyjny proces' : 'AI recruitment platform that flips traditional hiring',
-        isPolish ? 'Kandydaci rozmawiają z AI zamiast rekruterów' : 'Candidates talk to AI instead of recruiters',
-        isPolish ? 'Eliminuje bias i bullshit z procesów rekrutacyjnych' : 'Eliminates bias and bullshit from hiring processes',
-        isPolish ? 'Budowane na najnowszych technologiach AI i NLP' : 'Built with cutting-edge AI and NLP technologies'
-      ];
-      
-      return formatProjectResponse('Hireverse', achievements, isPolish);
-    }
-    
-    // For other contexts, use a cleaner format
-    const contextSummary = cleanContext.substring(0, 800);
-    
-    if (isPolish) {
-      return `${contextSummary}\n\n**Chcesz wiedzieć więcej?** Zapytaj o konkretny projekt lub aspekt mojej pracy.`;
-    } else {
-      return `${contextSummary}\n\n**Want to know more?** Ask about a specific project or aspect of my work.`;
-    }
-  }
-  
-  // Fallback responses when no specific context is found
-  
-  // Simple pattern matching for common questions
-  if (msg.includes('experience') || msg.includes('doświadczenie')) {
-    return isPolish
-      ? 'Mam 20 lat doświadczenia w projektowaniu produktów cyfrowych. Ostatnio byłem Design Lead w Volkswagen Digital, gdzie skalowałem zespół z 3 do 12 osób. Mogę opowiedzieć więcej o konkretnych projektach - co Cię interesuje?'
-      : 'I have 20 years of experience in digital product design. Most recently, I was Design Lead at Volkswagen Digital where I scaled the team from 3 to 12 designers. I can tell you more about specific projects - what interests you?';
-  }
-  
-  if (msg.includes('team') || msg.includes('lead') || msg.includes('zespół')) {
-    return isPolish
-      ? 'Moja filozofia przywództwa to servant leadership - jestem po to, żeby mój zespół odniósł sukces. W VW przez 2 lata miałem zerową rotację w zespole. Wierzę w autonomię i psychologiczne bezpieczeństwo.'
-      : 'My leadership philosophy is servant leadership - I exist to make my team successful. At VW, I maintained zero turnover for 2 years. I believe in autonomy and psychological safety.';
-  }
-  
-  // Generic response
-  return isPolish
-    ? 'Hmm, mogę powiedzieć więcej, ale potrzebuję konkretniejszego pytania. O czym dokładnie chcesz porozmawiać - moich projektach, doświadczeniu w leadership, czy może podejściu do designu?'
-    : "Hmm, I can tell you more, but I need a more specific question. What exactly would you like to know about - my projects, leadership experience, or design approach?";
+  const languageInstruction = intent.language === 'polish' 
+    ? 'RESPOND IN POLISH - use Polish language throughout the response'
+    : 'RESPOND IN ENGLISH - use English language throughout the response';
+
+  return `${basePrompt}
+
+${intentSpecificPrompt}
+
+${languageInstruction}
+
+CONTEXT ANALYSIS RULES:
+1. Always use the provided context as primary source
+2. If context is empty or irrelevant, acknowledge this honestly
+3. Extract specific details, metrics, and achievements from context
+4. Structure responses clearly with proper formatting
+5. Use button-prompt format for interactive elements: <button-prompt="topic">text</button-prompt>
+6. Be specific and reference actual projects/experiences
+7. Maintain Eryk's authentic voice and personality`;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('[CHAT] Endpoint called');
+  console.log('[CHAT] Endpoint called - Build:', BUILD_VERSION, 'Date:', BUILD_DATE);
   
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  const startTime = Date.now();
 
   try {
     const { messages, sessionId } = req.body;
@@ -230,61 +215,128 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!lastMessage || !lastMessage.content) {
       return res.status(400).json({ error: 'No message content' });
     }
+
+    console.log('[CHAT] Processing query:', lastMessage.content);
     
-    console.log('[CHAT] Searching Pinecone for:', lastMessage.content);
+    // Step 1: Detect query intent
+    const intent = detectQueryIntent(lastMessage.content);
+    console.log('[CHAT] Detected intent:', intent);
     
-    // Search Pinecone for relevant context
+    // Step 2: Get context using full context management system
     let context = '';
+    let searchResults: any[] = [];
+    let confidence = 0;
+    let cacheHit = false;
+    let pipelineStages: string[] = [];
+    
     try {
-      const searchResults = await hybridSearchPinecone(lastMessage.content, {
-        topK: 5,
-        namespace: 'production',
+      console.log('[CHAT] Using full context management pipeline');
+      
+      const contextResult = await chatContextAdapter.getContext(lastMessage.content, {
+        sessionId,
+        maxTokens: 4000,
+        namespace: 'production'
       });
       
-      console.log('[CHAT] Found', searchResults.length, 'search results');
+      context = contextResult.context;
+      searchResults = contextResult.searchResults;
+      confidence = contextResult.confidence;
+      cacheHit = contextResult.performanceMetrics.cacheHit;
+      pipelineStages = contextResult.performanceMetrics.stages;
       
-      // Log detailed search results for debugging
-      if (searchResults.length > 0) {
-        console.log('[CHAT] === DETAILED SEARCH RESULTS ===');
-        searchResults.forEach((result, index) => {
-          console.log(`[CHAT] Result ${index + 1}:`);
-          console.log(`[CHAT] - Score: ${result.score}`);
-          console.log(`[CHAT] - Text length: ${result.chunk.text.length}`);
-          console.log(`[CHAT] - Text preview: "${result.chunk.text.substring(0, 200)}..."`);
-          console.log(`[CHAT] - Metadata:`, JSON.stringify(result.chunk.metadata, null, 2));
-          console.log(`[CHAT] - Full text: "${result.chunk.text}"`);
-          console.log('[CHAT] ---');
-        });
-        console.log('[CHAT] === END SEARCH RESULTS ===');
-        
-        context = searchResults
-          .map(r => r.chunk.text)
-          .join('\n\n');
-        
-        console.log(`[CHAT] Combined context length: ${context.length} characters`);
-      } else {
-        console.log('[CHAT] No search results found');
-      }
-    } catch (searchError) {
-      console.error('[CHAT] Pinecone search error:', searchError);
-      // Continue without context if search fails
+      console.log('[CHAT] Context management completed:', {
+        contextLength: context.length,
+        searchResultsCount: searchResults.length,
+        confidence,
+        stages: pipelineStages,
+        cacheHit,
+        totalTime: contextResult.performanceMetrics.totalTime
+      });
+      
+    } catch (contextError) {
+      console.error('[CHAT] Context management error:', contextError);
+      // Continue with empty context - LLM will handle it gracefully
     }
     
-    // Generate response
-    const responseText = generateResponse(lastMessage.content, context, messages);
+    // Step 3: Build dynamic system prompt
+    const systemPrompt = buildDynamicSystemPrompt(intent);
     
-    console.log('[CHAT] Sending response');
+    // Step 4: Prepare messages for OpenAI
+    const openaiMessages = [
+      { role: 'system' as const, content: systemPrompt },
+      { role: 'user' as const, content: `Here is the context from my experience database:
+
+CONTEXT:
+${context || 'NO CONTEXT FOUND - The search returned no relevant results'}
+
+USER QUESTION: ${lastMessage.content}
+
+DETECTED INTENT: ${intent.type} (confidence: ${intent.confidence})
+LANGUAGE: ${intent.language}
+COMPLEXITY: ${intent.complexity}
+
+Please respond according to the intent-specific instructions above.` }
+    ];
     
-    // Return simple JSON response
+    console.log('[CHAT] Sending to OpenAI with intent:', intent.type);
+    
+    // Step 5: Generate response with OpenAI
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4-turbo-preview',
+      messages: openaiMessages,
+      temperature: 0.7,
+      max_tokens: 800,
+    });
+    
+    const responseText = completion.choices[0]?.message?.content || 'Przepraszam, nie udało się wygenerować odpowiedzi.';
+    const tokensUsed = completion.usage?.total_tokens || 0;
+    
+    // Step 6: Add version info
+    const versionInfo = `\n\nᴮᵘⁱˡᵈ: ${BUILD_VERSION} • ${BUILD_DATE}`;
+    const finalResponse = responseText + versionInfo;
+    
+    const responseTime = Date.now() - startTime;
+    
+    console.log('[CHAT] Response generated successfully:', {
+      responseTime,
+      tokensUsed,
+      intent: intent.type,
+      confidence,
+      cacheHit,
+      pipelineStages: pipelineStages.length,
+      contextLength: context.length
+    });
+    
+    // Step 7: Return response with metadata
     return res.status(200).json({
-      content: responseText
+      content: finalResponse,
+      metadata: {
+        intent: intent.type,
+        confidence: intent.confidence,
+        language: intent.language,
+        complexity: intent.complexity,
+        contextLength: context.length,
+        searchResultsCount: searchResults.length,
+        pipelineStages,
+        cacheHit,
+        responseTime,
+        tokensUsed,
+        buildVersion: BUILD_VERSION,
+        buildDate: BUILD_DATE
+      }
     });
     
   } catch (error) {
     console.error('[CHAT] Error:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    const errorResponse = {
+      content: 'Przepraszam, wystąpił błąd. Spróbuj ponownie za chwilę.',
+      metadata: {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        buildVersion: BUILD_VERSION,
+        buildDate: BUILD_DATE
+      }
+    };
+    
+    return res.status(500).json(errorResponse);
   }
 }
