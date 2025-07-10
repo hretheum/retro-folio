@@ -8,17 +8,17 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
   
   // Enhanced Polish patterns with better precision
   const polishPatterns = {
-    synthesis: /co potrafisz|jakie są.*umiejętności|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj/,
-    exploration: /opowiedz|więcej|szczegół|jak.*proces|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób/,
-    comparison: /porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne/,
+    synthesis: /jakie.*umiejętności|twoje.*umiejętności|co.*potrafisz|umiejętności|kompetencje|analiz|syntez|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj/,
+    exploration: /opowiedz.*o|tell.*me.*about|jak.*proces|co.*się.*działo|więcej|szczegół|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|jak to|w jaki sposób/,
+    comparison: /które.*bardziej|what.*better|podobieństwa|różnice|porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne/,
     factual: /ile(?!\s+razy)|kiedy|gdzie|kto|która|które|jakie(?!\s+są)|jaki(?!\s+sposób)|data|rok|liczba|wiek|czas|długo|dużo|mało|konkretnie|dokładnie|precyzyjnie|faktycznie/
   };
   
   // Enhanced English patterns with better precision
   const englishPatterns = {
     synthesis: /what.*(can|are|do)|competenc|skill|capabilit|overview|summariz|review|present|characterize|analyz|assess|evaluat/,
-    exploration: /tell.*more|detail|how.*(process|work)|why|history|methodology|explain|describe|expand|elaborate|what.*happen/,
-    comparison: /versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between/,
+    exploration: /tell.*me.*about|experience|detail|how.*(process|work)|why|history|methodology|explain|describe|expand|elaborate|what.*happen/,
+    comparison: /which.*more|what.*better|versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between/,
     factual: /how\s+(much|many|long|old)|when|where|who|what(?!\s+are)|which|date|year|number|age|time|specific|exact|precise|fact/
   };
   

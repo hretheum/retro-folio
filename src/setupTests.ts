@@ -1,5 +1,10 @@
 import '@testing-library/jest-dom';
 
+// Node.js polyfills for browser environment
+import { TextEncoder, TextDecoder } from 'util';
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any;
+
 // Extend expect with jest-dom matchers
 declare global {
   namespace jest {

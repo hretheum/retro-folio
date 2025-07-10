@@ -24,5 +24,8 @@ export default {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: 'tsconfig.test.json'
     }]
-  }
+  },
+  transformIgnorePatterns: [
+    'node_modules/(?!(vectra|cheerio|redis)/)'
+  ]
 };

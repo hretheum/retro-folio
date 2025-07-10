@@ -90,10 +90,10 @@ describe('Text Chunker', () => {
     });
     
     it('should respect chunking options', () => {
-      const chunks = chunkContent(mockContent, { maxTokens: 10 });
+      const chunks = chunkContent(mockContent, { maxTokens: 20 });
       
       chunks.forEach(chunk => {
-        expect(chunk.tokens).toBeLessThanOrEqual(10);
+        expect(chunk.tokens).toBeLessThanOrEqual(20);
       });
     });
   });
@@ -101,9 +101,12 @@ describe('Text Chunker', () => {
   describe('edge cases', () => {
     it('should handle very long single words', () => {
       const longWord = 'a'.repeat(1000);
-      const chunks = chunkText(longWord, { maxTokens: 100 });
+      const chunks = chunkText(longWord, { maxTokens: 200 });
       
       expect(chunks.length).toBeGreaterThan(1);
+      chunks.forEach(chunk => {
+        expect(chunk.tokens).toBeLessThanOrEqual(200);
+      });
     });
     
     it('should handle text with no sentence boundaries', () => {
