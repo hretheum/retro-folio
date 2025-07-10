@@ -380,23 +380,25 @@ export class ContextPruner {
     const originalCoverage = this.calculateQueryCoverage(originalChunks, queryWords);
     const prunedCoverage = this.calculateQueryCoverage(prunedChunks, queryWords);
     
-    const coverageRetention = originalCoverage > 0 ? prunedCoverage / originalCoverage : 1;
+    const coverageRetention = Math.min(1, originalCoverage > 0 ? prunedCoverage / originalCoverage : 1);
     
     // Information density score
     const originalDensity = this.calculateInformationDensity(originalChunks);
     const prunedDensity = this.calculateInformationDensity(prunedChunks);
     
-    const densityImprovement = originalDensity > 0 ? prunedDensity / originalDensity : 1;
+    const densityImprovement = Math.min(1, originalDensity > 0 ? prunedDensity / originalDensity : 1);
     
     // Metadata preservation score
-    const metadataPreservation = this.calculateMetadataPreservation(originalChunks, prunedChunks);
+    const metadataPreservation = Math.min(1, this.calculateMetadataPreservation(originalChunks, prunedChunks));
     
-    // Weighted combination
-    return (
+    // Weighted combination - ensure result is <= 1.0
+    const qualityScore = (
       coverageRetention * 0.4 +
       densityImprovement * 0.3 +
       metadataPreservation * 0.3
     );
+    
+    return Math.min(1, Math.max(0, qualityScore));
   }
   
   private calculateQueryCoverage(chunks: ContextChunk[], queryWords: string[]): number {

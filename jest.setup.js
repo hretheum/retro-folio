@@ -59,6 +59,11 @@ console.warn = (...args) => {
 jest.mock('@pinecone-database/pinecone', () => ({
   Pinecone: jest.fn().mockImplementation(() => ({
     index: jest.fn().mockReturnValue({
+      namespace: jest.fn().mockReturnValue({
+        query: jest.fn().mockResolvedValue({ matches: [] }),
+        upsert: jest.fn().mockResolvedValue({}),
+        fetch: jest.fn().mockResolvedValue({ records: [] })
+      }),
       query: jest.fn().mockResolvedValue({ matches: [] }),
       upsert: jest.fn().mockResolvedValue({}),
       describe: jest.fn().mockResolvedValue({ dimension: 1536 })
@@ -82,6 +87,42 @@ jest.mock('openai', () => ({
       }
     }
   }))
+}));
+
+// Mock semantic search with proper structure
+jest.mock('./lib/semantic-search', () => ({
+  semanticSearchPinecone: jest.fn().mockResolvedValue([
+    {
+      chunk: {
+        id: 'test-chunk-1',
+        text: 'Test content for semantic search',
+        metadata: {
+          contentType: 'work',
+          contentId: 'test-content-1',
+          source: 'test'
+        }
+      },
+      score: 0.8,
+      confidence: 0.85
+    }
+  ])
+}));
+
+// Mock vector search components
+jest.mock('./lib/pinecone-client', () => ({
+  searchSimilar: jest.fn().mockResolvedValue([
+    {
+      chunk: {
+        id: 'test-chunk-1',
+        text: 'Test content for search',
+        metadata: {
+          contentType: 'work',
+          contentId: 'test-content-1'
+        }
+      },
+      score: 0.8
+    }
+  ])
 }));
 
 // Set test environment
