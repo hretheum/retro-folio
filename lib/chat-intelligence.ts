@@ -8,38 +8,38 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
   
   // Enhanced Polish patterns with better precision
   const polishPatterns = {
-    synthesis: /co potrafisz|jakie są.*umiejętności|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj/,
-    exploration: /opowiedz|więcej|szczegół|jak.*proces|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób/,
-    comparison: /porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne/,
-    factual: /ile(?!\s+razy)|kiedy|gdzie|kto|która|które|jakie(?!\s+są)|jaki(?!\s+sposób)|data|rok|liczba|wiek|czas|długo|dużo|mało|konkretnie|dokładnie|precyzyjnie|faktycznie/
+    synthesis: /jakie.*umiejętności|jakie są.*umiejętności|co potrafisz|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj/,
+    exploration: /opowiedz.*więcej|opowiedz.*o|więcej.*o|szczegół|jak.*proces|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób/,
+    comparison: /które.*bardziej|porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne|challenging/,
+    factual: /ile(?!\s+razy)|kiedy|gdzie|kto|która|które(?!.*bardziej)|jakie(?!\s+są)|jaki(?!\s+sposób)|data|rok|liczba|wiek|czas|długo|dużo|mało|konkretnie|dokładnie|precyzyjnie|faktycznie/
   };
   
   // Enhanced English patterns with better precision
   const englishPatterns = {
-    synthesis: /what.*(can|are|do)|competenc|skill|capabilit|overview|summariz|review|present|characterize|analyz|assess|evaluat/,
-    exploration: /tell.*more|detail|how.*(process|work)|why|history|methodology|explain|describe|expand|elaborate|what.*happen/,
-    comparison: /versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between/,
-    factual: /how\s+(much|many|long|old)|when|where|who|what(?!\s+are)|which|date|year|number|age|time|specific|exact|precise|fact/
+    synthesis: /what.*(can|are|do)|your.*skills|your.*experience|competenc|skill|capabilit|overview|summariz|review|present|characterize|analyz|assess|evaluat/,
+    exploration: /tell.*me.*about|tell.*more|detail|how.*(process|work)|why|history|methodology|explain|describe|expand|elaborate|what.*happen/,
+    comparison: /which.*more|versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between|challenging/,
+    factual: /how\s+(much|many|long|old)|when|where|who|what(?!\s+are)|which(?!.*more)|date|year|number|age|time|specific|exact|precise|fact/
   };
   
-  // Test for factual queries first (most specific)
-  if (polishPatterns.factual.test(query) || englishPatterns.factual.test(query)) {
-    return 'FACTUAL';
+  // Test for comparison queries first (most specific with "bardziej", "more", "challenging")
+  if (polishPatterns.comparison.test(query) || englishPatterns.comparison.test(query)) {
+    return 'COMPARISON';
   }
   
-  // Test for synthesis queries
+  // Test for synthesis queries (includes "jakie są", "your skills", "your experience")
   if (polishPatterns.synthesis.test(query) || englishPatterns.synthesis.test(query)) {
     return 'SYNTHESIS';
   }
   
-  // Test for exploration queries
+  // Test for exploration queries (includes "opowiedz", "tell me about")
   if (polishPatterns.exploration.test(query) || englishPatterns.exploration.test(query)) {
     return 'EXPLORATION';
   }
   
-  // Test for comparison queries
-  if (polishPatterns.comparison.test(query) || englishPatterns.comparison.test(query)) {
-    return 'COMPARISON';
+  // Test for factual queries
+  if (polishPatterns.factual.test(query) || englishPatterns.factual.test(query)) {
+    return 'FACTUAL';
   }
   
   // Default to casual for simple greetings, short queries, or unclear intent

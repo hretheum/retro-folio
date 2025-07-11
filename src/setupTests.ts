@@ -1,5 +1,13 @@
 import '@testing-library/jest-dom';
 
+// Polyfill for TextEncoder/TextDecoder for Node environment
+if (typeof TextEncoder === 'undefined') {
+  global.TextEncoder = require('util').TextEncoder;
+}
+if (typeof TextDecoder === 'undefined') {
+  global.TextDecoder = require('util').TextDecoder;
+}
+
 // Extend expect with jest-dom matchers
 declare global {
   namespace jest {

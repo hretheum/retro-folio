@@ -1,3 +1,13 @@
+// Mock vector-search module
+jest.mock('../vector-search', () => ({
+  searchSimilar: jest.fn(),
+  getRelevantContext: jest.fn()
+}));
+
+// Mock the problematic dependencies
+jest.mock('vectra');
+jest.mock('redis');
+
 import { cosineSimilarity, buildContextWindow } from '../semantic-search';
 import type { SearchResult } from '../vector-store';
 import type { EmbeddedChunk } from '../embedding-generator';
