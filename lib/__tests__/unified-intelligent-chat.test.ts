@@ -225,11 +225,39 @@ describe('Unified Intelligent Chat Tests', () => {
             },
             relevanceFactors: { final: 0.7 },
             searchStage: 'HYBRID'
+          },
+          {
+            chunk: {
+              id: 'test-chunk-3',
+              text: 'Third chunk with substantial content to ensure we exceed the token limit. This additional text guarantees compression will be triggered.',
+              metadata: { contentType: 'work', contentId: 'test-source-3' }
+            },
+            relevanceFactors: { final: 0.6 },
+            searchStage: 'HYBRID'
           }
         ])
       };
       
       mockEnhancedHybridSearch.mockImplementation(() => mockSearchInstance);
+      
+      // Configure prune mock to return compressed result
+      mockContextPruner.prune.mockResolvedValue({
+        prunedChunks: [
+          {
+            id: 'test-chunk-1',
+            content: 'Compressed content',
+            metadata: { contentType: 'work' },
+            score: 0.8,
+            tokens: 30,
+            source: 'test-source'
+          }
+        ],
+        originalTokens: 150,
+        finalTokens: 30,
+        compressionRate: 0.8,
+        qualityScore: 0.9,
+        processingTime: 10
+      });
       
       // Create new instance after mocks are set
       const freshUnifiedChat = new UnifiedIntelligentChat();

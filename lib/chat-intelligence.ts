@@ -6,43 +6,86 @@ export type QueryIntent = 'SYNTHESIS' | 'EXPLORATION' | 'COMPARISON' | 'FACTUAL'
 export function analyzeQueryIntent(userQuery: string): QueryIntent {
   const query = userQuery.toLowerCase();
   
-  // Enhanced Polish patterns with better precision
-  const polishPatterns = {
-    synthesis: /jakie.*umiejętności|jakie są.*umiejętności|co potrafisz|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj/,
-    exploration: /opowiedz.*więcej|opowiedz.*o|więcej.*o|szczegół|jak.*proces|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób/,
-    comparison: /które.*bardziej|porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne|challenging/,
-    factual: /ile(?!\s+razy)|kiedy|gdzie|kto|która|które(?!.*bardziej)|jakie(?!\s+są)|jaki(?!\s+sposób)|data|rok|liczba|wiek|czas|długo|dużo|mało|konkretnie|dokładnie|precyzyjnie|faktycznie/
-  };
-  
-  // Enhanced English patterns with better precision
-  const englishPatterns = {
-    synthesis: /what.*(can|are|do)|your.*skills|your.*experience|competenc|skill|capabilit|overview|summariz|review|present|characterize|analyz|assess|evaluat/,
-    exploration: /tell.*me.*about|tell.*more|detail|how.*(process|work)|why|history|methodology|explain|describe|expand|elaborate|what.*happen/,
-    comparison: /which.*more|versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between|challenging/,
-    factual: /how\s+(much|many|long|old)|when|where|who|what(?!\s+are)|which(?!.*more)|date|year|number|age|time|specific|exact|precise|fact/
-  };
-  
-  // Test for comparison queries first (most specific with "bardziej", "more", "challenging")
-  if (polishPatterns.comparison.test(query) || englishPatterns.comparison.test(query)) {
-    return 'COMPARISON';
-  }
-  
-  // Test for synthesis queries (includes "jakie są", "your skills", "your experience")
-  if (polishPatterns.synthesis.test(query) || englishPatterns.synthesis.test(query)) {
+  // Check for specific SYNTHESIS patterns first
+  if (/jakie\s+(są\s+)?(twoje\s+)?umiejętności/.test(query) ||
+      /co\s+potrafisz/.test(query) ||
+      /your\s+(key\s+)?.*competenc/.test(query) ||
+      /your\s+skills/.test(query) ||
+      /analiz.*approach/.test(query) ||
+      /analyze.*approach/.test(query) ||
+      /przegląd.*kompetencji/.test(query) ||
+      /present.*capabilities/.test(query) ||
+      /oceń.*doświadczenie/.test(query) ||
+      /characterize.*work/.test(query) ||
+      /what\s+(are\s+)?your/.test(query) && /skills|competenc|capabilities/.test(query)) {
     return 'SYNTHESIS';
   }
   
-  // Test for exploration queries (includes "opowiedz", "tell me about")
-  if (polishPatterns.exploration.test(query) || englishPatterns.exploration.test(query)) {
+  // Check for EXPLORATION patterns
+  if (/opowiedz.*o\s+projekt/.test(query) ||
+      /opowiedz\s+więcej/.test(query) ||
+      /tell\s+me\s+about/.test(query) ||
+      /jak\s+wyglądał.*proces/.test(query) ||
+      /explain.*methodology/.test(query) ||
+      /opisz.*podejście/.test(query) ||
+      /how\s+did\s+you\s+handle/.test(query) ||
+      /co\s+się\s+działo/.test(query) ||
+      /elaborate\s+on/.test(query) ||
+      /więcej\s+o/.test(query) ||
+      /opowiedz\s+o/.test(query)) {
     return 'EXPLORATION';
   }
   
-  // Test for factual queries
-  if (polishPatterns.factual.test(query) || englishPatterns.factual.test(query)) {
+  // Check for COMPARISON patterns
+  if (/które.*bardziej.*challenging/.test(query) ||
+      /które.*były.*bardziej/.test(query) ||
+      /porównaj/.test(query) ||
+      /differences?\s+between/.test(query) ||
+      /compare/.test(query) ||
+      /różnice?\s+między/.test(query) ||
+      /what\s+is\s+better/.test(query) ||
+      /podobieństwa/.test(query) ||
+      /contrast/.test(query) ||
+      /versus|vs/.test(query)) {
+    return 'COMPARISON';
+  }
+  
+  // Check for FACTUAL patterns (more restrictive)
+  if (/^ile\s+lat/.test(query) ||
+      /^kiedy\s+/.test(query) ||
+      /^gdzie\s+/.test(query) ||
+      /^kto\s+/.test(query) ||
+      /^jaki\s+był/.test(query) ||
+      /^what\s+was\s+your/.test(query) ||
+      /^when\s+did/.test(query) ||
+      /^how\s+many\s+users/.test(query) ||
+      /^how\s+many/.test(query) ||
+      /^which\s+technologies\s+do/.test(query) ||
+      /konkretnie\s+ile/.test(query) ||
+      /exactly\s+how/.test(query)) {
     return 'FACTUAL';
   }
   
-  // Default to casual for simple greetings, short queries, or unclear intent
+  // Check for CASUAL patterns
+  if (/^cześć|^hello|^hi\s|^dzięki|^thanks|^jak\s+się\s+masz|^how\s+are\s+you|^miłego|^have\s+a\s+great|^tak$|^no$|^yes$/.test(query) ||
+      query.length < 15 && !/\?/.test(query)) {
+    return 'CASUAL';
+  }
+  
+  // Default fallback based on question words
+  if (/opowiedz|tell\s+me|explain|describe/.test(query)) {
+    return 'EXPLORATION';
+  }
+  
+  if (/jakie|what|which/.test(query) && /umiejętności|skills|competenc/.test(query)) {
+    return 'SYNTHESIS';
+  }
+  
+  if (/ile|kiedy|gdzie|when|where|how\s+many|how\s+much/.test(query)) {
+    return 'FACTUAL';
+  }
+  
+  // Final default
   return 'CASUAL';
 }
 
