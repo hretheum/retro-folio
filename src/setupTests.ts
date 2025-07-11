@@ -1,12 +1,96 @@
+// jest-dom adds custom jest matchers for asserting on DOM nodes.
+// allows you to do things like:
+// expect(element).toHaveTextContent(/react/i)
+// learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
-// Polyfill for TextEncoder/TextDecoder for Node environment
-if (typeof TextEncoder === 'undefined') {
-  global.TextEncoder = require('util').TextEncoder;
+// TextEncoder/TextDecoder polyfills
+const { TextEncoder, TextDecoder } = require('util');
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+
+// Fetch polyfill
+if (!global.fetch) {
+  global.fetch = require('node-fetch');
 }
-if (typeof TextDecoder === 'undefined') {
-  global.TextDecoder = require('util').TextDecoder;
-}
+
+// Mock dla Pinecone
+jest.mock('@pinecone-database/pinecone', () => {
+  const mockIndex = {
+    namespace: jest.fn().mockReturnValue({
+      query: jest.fn().mockResolvedValue({
+        matches: []
+      }),
+      upsert: jest.fn().mockResolvedValue({}),
+      deleteOne: jest.fn().mockResolvedValue({}),
+      deleteMany: jest.fn().mockResolvedValue({}),
+      deleteAll: jest.fn().mockResolvedValue({})
+    })
+  };
+
+  return {
+    Pinecone: jest.fn().mockImplementation(() => ({
+      index: jest.fn().mockReturnValue(mockIndex)
+    }))
+  };
+});
+
+// Mock dla innych zewnętrznych zależności  
+jest.mock('vectra', () => {
+  return {
+    LocalIndex: jest.fn().mockImplementation(() => ({
+      isIndexCreated: jest.fn().mockResolvedValue(true),
+      createIndex: jest.fn().mockResolvedValue(undefined),
+      beginUpdate: jest.fn().mockReturnValue({
+        insert: jest.fn(),
+        upsert: jest.fn(),
+        save: jest.fn().mockResolvedValue(undefined)
+      }),
+      queryItems: jest.fn().mockResolvedValue([])
+    }))
+  };
+});
+
+jest.mock('redis', () => {
+  const mockRedis = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue('OK'),
+    del: jest.fn().mockResolvedValue(1),
+    exists: jest.fn().mockResolvedValue(0),
+    expire: jest.fn().mockResolvedValue(1),
+    keys: jest.fn().mockResolvedValue([]),
+    connect: jest.fn().mockResolvedValue(undefined),
+    disconnect: jest.fn().mockResolvedValue(undefined),
+    on: jest.fn()
+  };
+  
+  return {
+    createClient: jest.fn().mockReturnValue(mockRedis)
+  };
+});
+
+jest.mock('openai', () => {
+  return {
+    OpenAI: jest.fn().mockImplementation(() => ({
+      embeddings: {
+        create: jest.fn().mockResolvedValue({
+          data: [{ embedding: Array(1536).fill(0.1) }]
+        })
+      },
+      chat: {
+        completions: {
+          create: jest.fn().mockResolvedValue({
+            choices: [{
+              message: {
+                content: 'Mocked response'
+              }
+            }]
+          })
+        }
+      }
+    }))
+  };
+});
 
 // Extend expect with jest-dom matchers
 declare global {

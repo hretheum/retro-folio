@@ -236,14 +236,14 @@ export class ContextPruner {
     const sortedChunks = [...chunks].sort((a, b) => {
       // First by content type priority
       const typeOrder = { 'work': 1, 'leadership': 2, 'experiment': 3, 'timeline': 4, 'contact': 5 };
-      const aOrder = typeOrder[a.metadata?.contentType] || 999;
-      const bOrder = typeOrder[b.metadata?.contentType] || 999;
+      const aOrder = typeOrder[a.metadata?.contentType as string] || 999;
+      const bOrder = typeOrder[b.metadata?.contentType as string] || 999;
       
       if (aOrder !== bOrder) return aOrder - bOrder;
       
       // Then by date (newest first)
       if (a.metadata?.date && b.metadata?.date) {
-        return new Date(b.metadata.date).getTime() - new Date(a.metadata.date).getTime();
+        return new Date(b.metadata.date as string).getTime() - new Date(a.metadata.date as string).getTime();
       }
       
       // Finally by score
@@ -349,7 +349,7 @@ export class ContextPruner {
       
       // Calculate diversity score
       const isContentTypeDiverse = !contentTypesSeen.has(contentType);
-      const hasDiverseTech = technologies.some(tech => !technologiesSeen.has(tech));
+      const hasDiverseTech = (technologies as string[]).some(tech => !technologiesSeen.has(tech));
       
       const diversityScore = (isContentTypeDiverse ? 0.5 : 0) + (hasDiverseTech ? 0.5 : 0);
       
@@ -358,7 +358,7 @@ export class ContextPruner {
         pruned.push(chunk);
         
         if (contentType) contentTypesSeen.add(contentType);
-        technologies.forEach(tech => technologiesSeen.add(tech));
+        (technologies as string[]).forEach(tech => technologiesSeen.add(tech));
       }
     }
     
@@ -566,7 +566,7 @@ export class ContextPruner {
     avgQualityScore: number;
     avgProcessingTime: number;
   }> {
-    const results = [];
+    const results: PruningResult[] = [];
     
     for (const testCase of testCases) {
       const result = await this.prune(testCase.chunks, testCase.query, testCase.targetTokens);

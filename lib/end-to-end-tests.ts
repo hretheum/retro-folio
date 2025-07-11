@@ -1,8 +1,8 @@
 // End-to-End Tests for Intelligent Context Management System
 
-import { dynamicContextSizing } from './dynamic-context-sizing';
-import { MultiStageRetrieval } from './multi-stage-retrieval';
-import { enhancedHybridSearch } from './enhanced-hybrid-search';
+import { getOptimalContextSize } from './chat-intelligence';
+import { multiStageRetrieval, MultiStageRetrieval } from './multi-stage-retrieval';
+import { EnhancedHybridSearch } from './enhanced-hybrid-search';
 import { contextPruner } from './context-pruning';
 import { smartContextCache } from './context-cache';
 import { unifiedIntelligentChat } from './unified-intelligent-chat';
@@ -47,17 +47,17 @@ class EndToEndTester {
     const test1Start = Date.now();
     try {
       const result = getOptimalContextSize("What is TypeScript?", 4000);
-      const passed = result.optimalSize > 500 && result.optimalSize < 2000 && result.confidence > 0.6;
+      const passed = result.maxTokens > 500 && result.maxTokens < 2000 && result.topKMultiplier > 0.6;
       
       results.push({
         testName: "Simple Query Context Sizing",
         passed,
         executionTime: Date.now() - test1Start,
-        details: `Size: ${result.optimalSize}, Confidence: ${result.confidence.toFixed(2)}`,
+        details: `Tokens: ${result.maxTokens}, TopK Multiplier: ${result.topKMultiplier.toFixed(2)}`,
         metrics: {
-          accuracy: result.confidence,
-          performance: result.processingTime < 100 ? 1.0 : 0.5,
-          efficiency: result.optimalSize / 4000
+          accuracy: result.topKMultiplier,
+          performance: (Date.now() - test1Start) < 100 ? 1.0 : 0.5,
+          efficiency: result.maxTokens / 4000
         }
       });
     } catch (error) {
@@ -74,17 +74,17 @@ class EndToEndTester {
     try {
       const complexQuery = "Explain the implementation of a distributed consensus algorithm using Raft protocol with leader election and log replication";
       const result = getOptimalContextSize(complexQuery, 8000);
-      const passed = result.optimalSize > 2000 && result.optimalSize < 6000 && result.confidence > 0.5;
+      const passed = result.maxTokens > 2000 && result.maxTokens < 6000 && result.topKMultiplier > 0.5;
       
       results.push({
         testName: "Complex Technical Query Sizing",
         passed,
         executionTime: Date.now() - test2Start,
-        details: `Size: ${result.optimalSize}, Confidence: ${result.confidence.toFixed(2)}`,
+        details: `Tokens: ${result.maxTokens}, TopK Multiplier: ${result.topKMultiplier.toFixed(2)}`,
         metrics: {
-          accuracy: result.confidence,
-          performance: result.processingTime < 200 ? 1.0 : 0.5,
-          efficiency: result.optimalSize / 8000
+          accuracy: result.topKMultiplier,
+          performance: (Date.now() - test2Start) < 200 ? 1.0 : 0.5,
+          efficiency: result.maxTokens / 8000
         }
       });
     } catch (error) {
@@ -100,17 +100,17 @@ class EndToEndTester {
     const test3Start = Date.now();
     try {
       const result = getOptimalContextSize("Simple question", 1000);
-      const passed = result.optimalSize <= 1000 && result.confidence > 0.7;
+      const passed = result.maxTokens <= 1000 && result.topKMultiplier > 0.7;
       
       results.push({
         testName: "Memory Constraint Handling",
         passed,
         executionTime: Date.now() - test3Start,
-        details: `Size: ${result.optimalSize}, Available: 1000, Confidence: ${result.confidence.toFixed(2)}`,
+        details: `Tokens: ${result.maxTokens}, Available: 1000, TopK Multiplier: ${result.topKMultiplier.toFixed(2)}`,
         metrics: {
-          accuracy: result.confidence,
-          performance: result.processingTime < 50 ? 1.0 : 0.5,
-          efficiency: result.optimalSize <= 1000 ? 1.0 : 0.0
+          accuracy: result.topKMultiplier,
+          performance: (Date.now() - test3Start) < 50 ? 1.0 : 0.5,
+          efficiency: result.maxTokens <= 1000 ? 1.0 : 0.0
         }
       });
     } catch (error) {
@@ -159,18 +159,18 @@ class EndToEndTester {
         aggregationStrategy: 'hybrid' as const
       };
 
-      const retrievalResults = await performMultiStageRetrieval("How to implement authentication?", config);
-      const passed = Array.isArray(retrievalResults) && retrievalResults.length <= 15;
+      const retrievalResults = await multiStageRetrieval.search("How to implement authentication?");
+      const passed = retrievalResults && retrievalResults.finalChunks && retrievalResults.finalChunks.length <= 15;
       
       results.push({
         testName: "Multi-Stage Retrieval",
         passed,
         executionTime: Date.now() - test4Start,
-        details: `Retrieved ${retrievalResults.length} results`,
+        details: `Retrieved ${retrievalResults?.finalChunks?.length || 0} results`,
         metrics: {
-          accuracy: retrievalResults.length > 0 ? 0.9 : 0.0,
+          accuracy: retrievalResults?.finalChunks?.length > 0 ? 0.9 : 0.0,
           performance: (Date.now() - test4Start) < 1000 ? 1.0 : 0.5,
-          efficiency: retrievalResults.length / config.maxResults
+          efficiency: retrievalResults?.finalChunks?.length / config.maxResults
         }
       });
     } catch (error) {
@@ -204,8 +204,9 @@ class EndToEndTester {
         ]
       };
 
-      const searchResults = await enhancedHybridSearch("TypeScript best practices", hybridConfig);
-      const passed = Array.isArray(searchResults);
+      const enhancedHybrid = new EnhancedHybridSearch();
+      const searchResults = await enhancedHybrid.search("TypeScript best practices", hybridConfig);
+      const passed = searchResults && searchResults.length > 0;
       
       results.push({
         testName: "Enhanced Hybrid Search",
@@ -251,7 +252,11 @@ class EndToEndTester {
         qualityThreshold: 0.6
       };
 
-      const prunedResult = await pruneContext(longContext, "What is the important information?", pruningConfig);
+      const prunedResult = await contextPruner.prune(
+        [{ content: longContext, metadata: {}, score: 1.0 }], 
+        "What is the important information?", 
+        pruningConfig
+      );
       const passed = prunedResult.reductionAchieved > 0.3 && prunedResult.qualityScore > 0.6;
       
       results.push({
@@ -281,11 +286,11 @@ class EndToEndTester {
       const testValue = { content: 'test context', tokens: 100 };
       
       // Test cache set
-      await this.cache.set(testKey, testValue);
+      await this.cache.set(testKey, testValue, [{ content: testValue.content, metadata: {}, score: 1.0 }]);
       
       // Test cache get
-      const cached = await this.cache.get(testKey);
-      const passed = cached !== null && cached.value.content === testValue.content;
+      const cached = await this.cache.get(testKey, 100);
+      const passed = cached !== null && cached.length > 0 && cached[0].content === testValue.content;
       
       // Test cache stats
       const stats = this.cache.getStats();
@@ -327,7 +332,7 @@ class EndToEndTester {
       // This would be the full pipeline if unified-intelligent-chat is available
       let response;
       try {
-        response = await generateIntelligentResponse(testQuery, {
+        response = await unifiedIntelligentChat.generateResponse(testQuery, {
           sessionId: 'e2e-test',
           useCache: true,
           enablePruning: true,
@@ -340,7 +345,7 @@ class EndToEndTester {
           response: "OAuth2 implementation requires...",
           confidence: 0.8,
           processingTime: Date.now() - test8Start,
-          tokensUsed: contextSize.optimalSize
+          tokensUsed: contextSize.maxTokens
         };
       }
       
@@ -383,7 +388,7 @@ class EndToEndTester {
         return {
           query,
           processingTime: Date.now() - start,
-          success: result.optimalSize > 0
+          success: result.maxTokens > 0
         };
       });
       
