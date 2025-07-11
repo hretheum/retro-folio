@@ -28,6 +28,8 @@
     "@vercel/kv": "^2.0.0",
     "@vercel/node": "^3.0.0",
     "ai": "^4.3.16",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
     "framer-motion": "^11.0.3",
     "leva": "^0.9.35",
     "lucide-react": "^0.344.0",
