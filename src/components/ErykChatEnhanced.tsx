@@ -109,7 +109,7 @@ export function ErykChatEnhanced({
       // Create abort controller for this request
       abortControllerRef.current = new AbortController();
       
-      const endpoint = enableStreaming ? '/api/ai/chat-streaming' : '/api/ai/chat-with-llm';
+      const endpoint = '/api/ai/intelligent-chat'; // Using the proper intelligent endpoint
       
       const response = await fetch(endpoint, {
         method: 'POST',
