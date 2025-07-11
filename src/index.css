@@ -1407,14 +1407,34 @@ body:has(.portfolio-page) {
   }
   
   .retro-main-container {
-    grid-template-areas:
-      "header"
-      "nav"
-      "content"
-      "footer";
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto 1fr auto;
-    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Full height instead of max-height */
+    height: auto; /* Allow content to determine height */
+  }
+  
+  /* Minimized Header on Mobile */
+  .retro-header {
+    padding: 0.5rem 1rem; /* Reduced padding */
+    position: relative;
+  }
+  
+  .retro-title {
+    font-size: 1.2rem; /* Smaller title */
+    margin: 0;
+  }
+  
+  .retro-subtitle {
+    font-size: 0.7rem; /* Smaller subtitle */
+    margin-top: 0.25rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .retro-subtitle span {
+    font-size: 0.6rem; /* Even smaller badges */
+    padding: 0.1rem 0.3rem;
   }
   
   .retro-sidebar {
@@ -1425,26 +1445,32 @@ body:has(.portfolio-page) {
     display: none; /* Hide main navigation on mobile */
   }
   
+  .retro-layout-wrapper {
+    flex: 1; /* Take remaining space */
+    display: flex;
+    flex-direction: column;
+  }
+  
   .retro-content {
-    height: calc(100vh - 140px); /* Adjust for mobile without nav */
+    flex: 1; /* Take remaining space between header and footer */
+    min-height: 0; /* Allow flex to work properly */
   }
   
-  .retro-title {
-    font-size: 1.5rem;
-  }
-  
+  /* Hide modal-like components on mobile */
   .retro-nav-dots {
-    right: 0.5rem;
-  }
-  
-  .retro-nav-dot {
-    width: 25px;
-    height: 25px;
-    font-size: 0.7rem;
+    display: none; /* Hide section navigator on mobile */
   }
   
   .retro-scroll-indicator {
-    right: 1rem;
+    display: none; /* Hide scroll indicator on mobile */
+  }
+  
+  .retro-scroll-help {
+    display: none; /* Hide scroll instructions on mobile */
+  }
+  
+  .retro-transition-title {
+    display: none; /* Hide transition overlay on mobile */
   }
   
   .retro-floating-elements {
@@ -1452,10 +1478,7 @@ body:has(.portfolio-page) {
   }
   
   .retro-music-status {
-    position: relative;
-    top: auto;
-    right: auto;
-    margin-bottom: 1rem;
+    display: none; /* Hide music status on mobile */
   }
 
   .retro-nav-content {
@@ -1476,19 +1499,32 @@ body:has(.portfolio-page) {
     font-size: 0.6rem;
   }
   
-  /* Mobile footer improvements */
+  /* Minimized Footer on Mobile - NOT sticky */
   .retro-footer {
-    padding: 1rem 0.5rem;
+    padding: 0.75rem 0.5rem; /* Reduced padding */
+    position: relative; /* Not fixed/sticky */
+    margin-top: auto; /* Push to bottom but not sticky */
+  }
+  
+  .retro-footer-content {
+    text-align: center;
+  }
+  
+  .retro-footer-text {
+    font-size: 0.7rem; /* Smaller text */
+    margin-bottom: 0.5rem;
   }
   
   .retro-footer-links {
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.3rem; /* Reduced gap */
     text-align: center;
+    margin-bottom: 0.5rem;
   }
   
   .retro-footer-link {
-    font-size: 0.8rem;
+    font-size: 0.7rem; /* Smaller links */
+    padding: 0.2rem 0;
   }
   
   .retro-separator {
@@ -1496,8 +1532,176 @@ body:has(.portfolio-page) {
   }
   
   .retro-copyright {
-    font-size: 0.7rem;
+    font-size: 0.6rem; /* Smaller copyright */
     text-align: center;
+    line-height: 1.3;
+  }
+  
+  .retro-music-credit,
+  .retro-saturn-credit,
+  .retro-guestbook-credit {
+    display: none; /* Hide extra credits on mobile */
+  }
+}
+
+/* Additional mobile responsiveness for sections and content */
+@media (max-width: 768px) {
+  /* Section content responsiveness */
+  .retro-section {
+    padding: 1rem !important;
+    font-size: 0.9rem;
+  }
+  
+  .retro-section h1,
+  .retro-section h2,
+  .retro-section h3 {
+    font-size: 1.5rem !important;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+  }
+  
+  .retro-section h4,
+  .retro-section h5,
+  .retro-section h6 {
+    font-size: 1.2rem !important;
+  }
+  
+  .retro-section p {
+    font-size: 0.9rem !important;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+  
+  .retro-section button {
+    font-size: 0.8rem !important;
+    padding: 0.5rem 1rem !important;
+  }
+  
+  /* Hide elements that don't work well on mobile */
+  .retro-section .fixed {
+    position: relative !important;
+  }
+  
+  /* Timeline and complex layouts */
+  .retro-section .grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  .retro-section .flex {
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+  
+  /* Images and media */
+  .retro-section img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  
+  /* Forms and inputs */
+  .retro-section input,
+  .retro-section textarea,
+  .retro-section select {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Modal responsiveness - fallback for any modals that might appear */
+  .fixed {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 9999 !important;
+    padding: 1rem !important;
+    overflow-y: auto !important;
+  }
+  
+  .fixed > div {
+    max-width: 100% !important;
+    max-height: 90vh !important;
+    margin: 0 auto !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Guestbook modal specific mobile fixes */
+  .retro-guestbook-modal {
+    padding: 0.5rem !important;
+  }
+  
+  .retro-guestbook-form-container {
+    max-width: 100% !important;
+    margin: 1rem 0 !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  
+  .retro-form-row {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  .retro-mood-selector,
+  .retro-rating-selector {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+  }
+}
+
+/* Additional mobile breakpoint for very small screens */
+@media (max-width: 480px) {
+  .retro-header {
+    padding: 0.25rem 0.5rem; /* Even more minimal on small screens */
+  }
+  
+  .retro-title {
+    font-size: 1rem;
+  }
+  
+  .retro-subtitle {
+    font-size: 0.6rem;
+  }
+  
+  .retro-subtitle span {
+    font-size: 0.5rem;
+    padding: 0.05rem 0.2rem;
+  }
+  
+  .retro-footer {
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .retro-footer-text {
+    font-size: 0.6rem;
+  }
+  
+  .retro-footer-link {
+    font-size: 0.6rem;
+  }
+  
+  .retro-copyright {
+    font-size: 0.55rem;
+  }
+  
+  /* Even smaller content on tiny screens */
+  .retro-section {
+    padding: 0.5rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .retro-section h1,
+  .retro-section h2,
+  .retro-section h3 {
+    font-size: 1.2rem !important;
+  }
+  
+  .retro-section p {
+    font-size: 0.8rem !important;
   }
 }
 

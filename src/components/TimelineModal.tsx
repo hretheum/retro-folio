@@ -37,7 +37,24 @@ export default function TimelineModal({
   onPrev,
   onNext
 }: TimelineModalProps) {
-  if (!isOpen || !event || eventIndex === null) return null;
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    // Check initially
+    checkIfMobile();
+
+    // Add resize listener
+    window.addEventListener('resize', checkIfMobile);
+    
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
+
+  // Don't show modal on mobile devices
+  if (!isOpen || !event || eventIndex === null || isMobile) return null;
 
   const modalContent = (
     <AnimatePresence>
