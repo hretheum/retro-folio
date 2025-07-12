@@ -1,0 +1,25 @@
+{
+  "timestamp": "2025-07-12T18:44:46.877Z",
+  "performance": {
+    "avgResponseTime": 0,
+    "p95ResponseTime": 0,
+    "errorRate": 0
+  },
+  "accuracy": {
+    "intentClassification": 0,
+    "contextRelevance": 0
+  },
+  "infrastructure": {
+    "memoryUsage": {
+      "rss": 115728384,
+      "heapTotal": 11337728,
+      "heapUsed": 8033120,
+      "external": 2394286,
+      "arrayBuffers": 45261
+    },
+    "cpuUsage": {
+      "user": 211463,
+      "system": 27439
+    }
+  }
+}
