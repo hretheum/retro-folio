@@ -21,7 +21,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
-    "test:e2e:chromium": "playwright test --project=chromium"
+    "test:e2e:chromium": "playwright test --project=chromium",
+    "test:integration": "npx tsx scripts/test-with-real-apis.ts",
+    "test:vercel": "vercel env pull .env.local --yes && npx tsx scripts/test-with-real-apis.ts"
   },
   "dependencies": {
     "@pinecone-database/pinecone": "^6.1.1",

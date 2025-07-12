@@ -1,0 +1,62 @@
+name: Test with Vercel Environment
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-with-real-apis:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Install Vercel CLI
+      run: npm i -g vercel@latest
+    
+    - name: Pull Vercel Environment Variables
+      run: |
+        vercel env pull .env.local --yes
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    
+    - name: Run tests with real APIs
+      run: |
+        npm test lib/embeddings/embedding-service.test.ts
+        npm test lib/intent/embedding-classifier.test.ts
+        npm test lib/embeddings/similarity-calculator.test.ts
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+        PINECONE_INDEX: ${{ secrets.PINECONE_INDEX }}
+    
+    - name: Run integration tests
+      run: |
+        npm run test:integration
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+        PINECONE_INDEX: ${{ secrets.PINECONE_INDEX }}
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: |
+          coverage/
+          test-results/
+          validation-reports/
