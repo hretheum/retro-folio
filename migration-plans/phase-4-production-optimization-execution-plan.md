@@ -3327,6 +3327,550 @@ From regex to RAG, from monolith to microservices, from manual to autonomous - t
 generatePhase4Summary().catch(console.error);
 EOF
 
+#### ZADANIE 4.4.6: Implement chaos engineering tests
+
+```bash
+# Install chaos engineering dependencies
+npm install chaos-monkey @gremlin/sdk k6
+
+# Create chaos engineering framework
+cat > lib/chaos/chaos-engine.ts << 'EOF'
+import { GremlinClient } from '@gremlin/sdk';
+import { EventEmitter } from 'events';
+
+export interface ChaosScenario {
+  id: string;
+  name: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  duration: number; // seconds
+  probability: number; // 0-1
+  conditions: {
+    timeOfDay?: { start: string; end: string };
+    loadThreshold?: number;
+    serviceHealth?: string[];
+  };
+  actions: ChaosAction[];
+}
+
+export interface ChaosAction {
+  type: 'network' | 'cpu' | 'memory' | 'disk' | 'service';
+  target: string;
+  parameters: Record<string, any>;
+}
+
+export interface ChaosResult {
+  scenarioId: string;
+  startTime: Date;
+  endTime: Date;
+  success: boolean;
+  impact: {
+    latencyIncrease: number;
+    errorRateIncrease: number;
+    throughputDecrease: number;
+  };
+  recovery: {
+    timeToRecovery: number;
+    automaticRecovery: boolean;
+    manualIntervention: boolean;
+  };
+}
+
+export class ChaosEngine extends EventEmitter {
+  private gremlin: GremlinClient;
+  private activeScenarios: Map<string, NodeJS.Timeout> = new Map();
+  private results: ChaosResult[] = [];
+  
+  constructor() {
+    super();
+    this.gremlin = new GremlinClient({
+      teamId: process.env.GREMLIN_TEAM_ID!,
+      clusterId: process.env.GREMLIN_CLUSTER_ID!,
+      identifier: process.env.GREMLIN_IDENTIFIER!,
+      secret: process.env.GREMLIN_SECRET!,
+    });
+  }
+  
+  async runScenario(scenario: ChaosScenario): Promise<ChaosResult> {
+    const startTime = new Date();
+    console.log(`🧪 Running chaos scenario: ${scenario.name}`);
+    
+    try {
+      // Check conditions
+      if (!this.checkConditions(scenario.conditions)) {
+        throw new Error('Scenario conditions not met');
+      }
+      
+      // Execute actions
+      const actionPromises = scenario.actions.map(action => 
+        this.executeAction(action)
+      );
+      await Promise.all(actionPromises);
+      
+      // Wait for duration
+      await this.delay(scenario.duration * 1000);
+      
+      // Stop actions
+      await this.stopActions(scenario.actions);
+      
+      const endTime = new Date();
+      const result = await this.measureImpact(startTime, endTime);
+      
+      const chaosResult: ChaosResult = {
+        scenarioId: scenario.id,
+        startTime,
+        endTime,
+        success: true,
+        impact: result.impact,
+        recovery: result.recovery
+      };
+      
+      this.results.push(chaosResult);
+      this.emit('scenarioCompleted', chaosResult);
+      
+      console.log(`✅ Chaos scenario completed: ${scenario.name}`);
+      return chaosResult;
+      
+    } catch (error) {
+      const endTime = new Date();
+      const chaosResult: ChaosResult = {
+        scenarioId: scenario.id,
+        startTime,
+        endTime,
+        success: false,
+        impact: { latencyIncrease: 0, errorRateIncrease: 0, throughputDecrease: 0 },
+        recovery: { timeToRecovery: 0, automaticRecovery: false, manualIntervention: true }
+      };
+      
+      this.results.push(chaosResult);
+      this.emit('scenarioFailed', { scenario, error });
+      
+      console.error(`❌ Chaos scenario failed: ${scenario.name}`, error);
+      throw error;
+    }
+  }
+  
+  private async executeAction(action: ChaosAction): Promise<void> {
+    switch (action.type) {
+      case 'network':
+        await this.executeNetworkChaos(action);
+        break;
+      case 'cpu':
+        await this.executeCpuChaos(action);
+        break;
+      case 'memory':
+        await this.executeMemoryChaos(action);
+        break;
+      case 'disk':
+        await this.executeDiskChaos(action);
+        break;
+      case 'service':
+        await this.executeServiceChaos(action);
+        break;
+      default:
+        throw new Error(`Unknown chaos action type: ${action.type}`);
+    }
+  }
+  
+  private async executeNetworkChaos(action: ChaosAction): Promise<void> {
+    const { target, parameters } = action;
+    
+    await this.gremlin.attacks.create({
+      target: {
+        type: 'Host',
+        identifiers: { hostname: target }
+      },
+      scope: {
+        type: 'Network',
+        ...parameters
+      }
+    });
+  }
+  
+  private async executeCpuChaos(action: ChaosAction): Promise<void> {
+    const { target, parameters } = action;
+    
+    await this.gremlin.attacks.create({
+      target: {
+        type: 'Host',
+        identifiers: { hostname: target }
+      },
+      scope: {
+        type: 'CPU',
+        ...parameters
+      }
+    });
+  }
+  
+  private async executeMemoryChaos(action: ChaosAction): Promise<void> {
+    const { target, parameters } = action;
+    
+    await this.gremlin.attacks.create({
+      target: {
+        type: 'Host',
+        identifiers: { hostname: target }
+      },
+      scope: {
+        type: 'Memory',
+        ...parameters
+      }
+    });
+  }
+  
+  private async executeDiskChaos(action: ChaosAction): Promise<void> {
+    const { target, parameters } = action;
+    
+    await this.gremlin.attacks.create({
+      target: {
+        type: 'Host',
+        identifiers: { hostname: target }
+      },
+      scope: {
+        type: 'Disk',
+        ...parameters
+      }
+    });
+  }
+  
+  private async executeServiceChaos(action: ChaosAction): Promise<void> {
+    const { target, parameters } = action;
+    
+    // For service-level chaos, we might use different tools
+    // This could involve stopping containers, killing processes, etc.
+    console.log(`Executing service chaos on ${target} with params:`, parameters);
+  }
+  
+  private async stopActions(actions: ChaosAction[]): Promise<void> {
+    // Stop all active attacks
+    const attacks = await this.gremlin.attacks.list();
+    for (const attack of attacks) {
+      await this.gremlin.attacks.halt(attack.id);
+    }
+  }
+  
+  private checkConditions(conditions: any): boolean {
+    // Check time of day
+    if (conditions.timeOfDay) {
+      const now = new Date();
+      const currentTime = now.toTimeString().slice(0, 5);
+      if (currentTime < conditions.timeOfDay.start || currentTime > conditions.timeOfDay.end) {
+        return false;
+      }
+    }
+    
+    // Check load threshold
+    if (conditions.loadThreshold) {
+      // This would check current system load
+      // Implementation depends on monitoring system
+    }
+    
+    // Check service health
+    if (conditions.serviceHealth) {
+      // This would check health of specified services
+      // Implementation depends on health check endpoints
+    }
+    
+    return true;
+  }
+  
+  private async measureImpact(startTime: Date, endTime: Date): Promise<{
+    impact: any;
+    recovery: any;
+  }> {
+    // This would measure the impact during the chaos scenario
+    // Implementation depends on monitoring and metrics collection
+    
+    return {
+      impact: {
+        latencyIncrease: Math.random() * 100, // Mock data
+        errorRateIncrease: Math.random() * 10,
+        throughputDecrease: Math.random() * 20
+      },
+      recovery: {
+        timeToRecovery: Math.random() * 60,
+        automaticRecovery: true,
+        manualIntervention: false
+      }
+    };
+  }
+  
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+  
+  getResults(): ChaosResult[] {
+    return [...this.results];
+  }
+  
+  getActiveScenarios(): string[] {
+    return Array.from(this.activeScenarios.keys());
+  }
+}
+EOF
+
+# Create predefined chaos scenarios
+cat > lib/chaos/scenarios.ts << 'EOF'
+import { ChaosScenario } from './chaos-engine';
+
+export const CHAOS_SCENARIOS: ChaosScenario[] = [
+  {
+    id: 'network-latency',
+    name: 'Network Latency Spike',
+    description: 'Simulate network latency increase',
+    severity: 'medium',
+    duration: 60,
+    probability: 0.3,
+    conditions: {
+      timeOfDay: { start: '09:00', end: '17:00' }
+    },
+    actions: [
+      {
+        type: 'network',
+        target: 'intent-service',
+        parameters: {
+          delay: 100,
+          jitter: 50
+        }
+      }
+    ]
+  },
+  {
+    id: 'cpu-spike',
+    name: 'CPU Spike',
+    description: 'Simulate high CPU usage',
+    severity: 'high',
+    duration: 120,
+    probability: 0.2,
+    conditions: {
+      loadThreshold: 0.7
+    },
+    actions: [
+      {
+        type: 'cpu',
+        target: 'response-service',
+        parameters: {
+          cores: 2,
+          load: 0.9
+        }
+      }
+    ]
+  },
+  {
+    id: 'memory-leak',
+    name: 'Memory Leak Simulation',
+    description: 'Simulate memory pressure',
+    severity: 'high',
+    duration: 180,
+    probability: 0.15,
+    conditions: {},
+    actions: [
+      {
+        type: 'memory',
+        target: 'context-service',
+        parameters: {
+          bytes: '1GB',
+          load: 0.8
+        }
+      }
+    ]
+  },
+  {
+    id: 'service-failure',
+    name: 'Service Failure',
+    description: 'Simulate service unavailability',
+    severity: 'critical',
+    duration: 30,
+    probability: 0.1,
+    conditions: {
+      timeOfDay: { start: '02:00', end: '06:00' }
+    },
+    actions: [
+      {
+        type: 'service',
+        target: 'orchestration-service',
+        parameters: {
+          action: 'stop',
+          duration: 30
+        }
+      }
+    ]
+  },
+  {
+    id: 'disk-io',
+    name: 'Disk I/O Pressure',
+    description: 'Simulate disk I/O bottlenecks',
+    severity: 'medium',
+    duration: 90,
+    probability: 0.25,
+    conditions: {},
+    actions: [
+      {
+        type: 'disk',
+        target: 'gateway',
+        parameters: {
+          readBytes: '100MB',
+          writeBytes: '50MB'
+        }
+      }
+    ]
+  }
+];
+EOF
+
+# Create chaos testing script
+cat > scripts/run-chaos-tests.ts << 'EOF'
+import { ChaosEngine } from '../lib/chaos/chaos-engine';
+import { CHAOS_SCENARIOS } from '../lib/chaos/scenarios';
+import fs from 'fs/promises';
+
+async function runChaosTests() {
+  const engine = new ChaosEngine();
+  
+  // Set up event listeners
+  engine.on('scenarioCompleted', (result) => {
+    console.log(`✅ Scenario ${result.scenarioId} completed successfully`);
+    console.log(`   Impact: Latency +${result.impact.latencyIncrease}ms, Errors +${result.impact.errorRateIncrease}%`);
+    console.log(`   Recovery: ${result.recovery.timeToRecovery}s, Auto: ${result.recovery.automaticRecovery}`);
+  });
+  
+  engine.on('scenarioFailed', ({ scenario, error }) => {
+    console.error(`❌ Scenario ${scenario.id} failed:`, error.message);
+  });
+  
+  console.log('🧪 Starting chaos engineering tests...');
+  
+  const results = [];
+  
+  // Run scenarios based on probability
+  for (const scenario of CHAOS_SCENARIOS) {
+    if (Math.random() < scenario.probability) {
+      try {
+        const result = await engine.runScenario(scenario);
+        results.push(result);
+        
+        // Wait between scenarios
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      } catch (error) {
+        console.error(`Failed to run scenario ${scenario.id}:`, error);
+      }
+    }
+  }
+  
+  // Generate report
+  const report = {
+    timestamp: new Date().toISOString(),
+    totalScenarios: results.length,
+    successfulScenarios: results.filter(r => r.success).length,
+    failedScenarios: results.filter(r => !r.success).length,
+    averageLatencyIncrease: results.reduce((sum, r) => sum + r.impact.latencyIncrease, 0) / results.length,
+    averageErrorRateIncrease: results.reduce((sum, r) => sum + r.impact.errorRateIncrease, 0) / results.length,
+    averageRecoveryTime: results.reduce((sum, r) => sum + r.recovery.timeToRecovery, 0) / results.length,
+    automaticRecoveries: results.filter(r => r.recovery.automaticRecovery).length,
+    manualInterventions: results.filter(r => r.recovery.manualIntervention).length,
+    results
+  };
+  
+  // Save report
+  await fs.writeFile(
+    'validation-reports/phase-4-production/chaos-engineering-report.json',
+    JSON.stringify(report, null, 2)
+  );
+  
+  console.log('📊 Chaos engineering report generated');
+  console.log(`   Total scenarios: ${report.totalScenarios}`);
+  console.log(`   Success rate: ${(report.successfulScenarios / report.totalScenarios * 100).toFixed(1)}%`);
+  console.log(`   Avg latency increase: ${report.averageLatencyIncrease.toFixed(1)}ms`);
+  console.log(`   Avg recovery time: ${report.averageRecoveryTime.toFixed(1)}s`);
+  
+  return report;
+}
+
+runChaosTests().catch(console.error);
+EOF
+
+# Create chaos engineering test
+cat > tests/chaos/chaos-engine.test.ts << 'EOF'
+import { ChaosEngine } from '../../lib/chaos/chaos-engine';
+import { CHAOS_SCENARIOS } from '../../lib/chaos/scenarios';
+
+describe('Chaos Engine', () => {
+  let engine: ChaosEngine;
+  
+  beforeEach(() => {
+    engine = new ChaosEngine();
+  });
+  
+  test('should create chaos engine', () => {
+    expect(engine).toBeDefined();
+  });
+  
+  test('should have predefined scenarios', () => {
+    expect(CHAOS_SCENARIOS.length).toBeGreaterThan(0);
+    expect(CHAOS_SCENARIOS[0]).toHaveProperty('id');
+    expect(CHAOS_SCENARIOS[0]).toHaveProperty('actions');
+  });
+  
+  test('should validate scenario structure', () => {
+    for (const scenario of CHAOS_SCENARIOS) {
+      expect(scenario.id).toBeDefined();
+      expect(scenario.name).toBeDefined();
+      expect(scenario.severity).toMatch(/^(low|medium|high|critical)$/);
+      expect(scenario.duration).toBeGreaterThan(0);
+      expect(scenario.probability).toBeGreaterThan(0);
+      expect(scenario.probability).toBeLessThanOrEqual(1);
+      expect(scenario.actions.length).toBeGreaterThan(0);
+    }
+  });
+  
+  test('should handle scenario completion events', (done) => {
+    engine.on('scenarioCompleted', (result) => {
+      expect(result.scenarioId).toBeDefined();
+      expect(result.success).toBe(true);
+      done();
+    });
+    
+    // Mock a successful scenario completion
+    engine.emit('scenarioCompleted', {
+      scenarioId: 'test',
+      startTime: new Date(),
+      endTime: new Date(),
+      success: true,
+      impact: { latencyIncrease: 0, errorRateIncrease: 0, throughputDecrease: 0 },
+      recovery: { timeToRecovery: 0, automaticRecovery: true, manualIntervention: false }
+    });
+  });
+  
+  test('should handle scenario failure events', (done) => {
+    engine.on('scenarioFailed', ({ scenario, error }) => {
+      expect(scenario.id).toBeDefined();
+      expect(error).toBeDefined();
+      done();
+    });
+    
+    // Mock a failed scenario
+    engine.emit('scenarioFailed', {
+      scenario: { id: 'test', name: 'Test', description: '', severity: 'low', duration: 10, probability: 0.1, conditions: {}, actions: [] },
+      error: new Error('Test failure')
+    });
+  });
+});
+EOF
+
+# Run chaos engineering tests
+npm test tests/chaos/chaos-engine.test.ts
+
+# Run chaos scenarios (in staging environment)
+echo "🧪 Running chaos engineering scenarios..."
+npx tsx scripts/run-chaos-tests.ts
+```
+
+**CHECKPOINT 4.4.6**:
+- [ ] Chaos engineering framework implemented
+- [ ] Predefined scenarios created
+- [ ] Tests passing
+- [ ] Chaos scenarios executed
+- [ ] Impact measured and reported
+
 # Run summary generation
 npx tsx scripts/generate-phase4-summary.ts
 ```

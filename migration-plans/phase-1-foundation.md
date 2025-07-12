@@ -2842,7 +2842,499 @@ npm test tests/phase1-integration.test.ts
 - [ ] Cache hit rate acceptable
 - [ ] Rollout logic verified
 
-#### ZADANIE 1.3.5: Generate final Phase 1 report
+#### ZADANIE 1.3.5: Implement confidence threshold validation
+
+```bash
+# Create confidence threshold validator
+cat > lib/validation/confidence-validator.ts << 'EOF'
+export interface ConfidenceThreshold {
+  min: number;
+  max: number;
+  default: number;
+  adaptive: boolean;
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  confidence: number;
+  threshold: number;
+  reason?: string;
+  suggestions?: string[];
+}
+
+export interface ThresholdConfig {
+  SYNTHESIS: ConfidenceThreshold;
+  EXPLORATION: ConfidenceThreshold;
+  COMPARISON: ConfidenceThreshold;
+  FACTUAL: ConfidenceThreshold;
+  CASUAL: ConfidenceThreshold;
+}
+
+export class ConfidenceValidator {
+  private thresholds: ThresholdConfig;
+  private adaptiveThresholds: Map<string, number> = new Map();
+  private historicalData: Map<string, number[]> = new Map();
+  
+  constructor() {
+    this.thresholds = {
+      SYNTHESIS: {
+        min: 0.6,
+        max: 0.95,
+        default: 0.75,
+        adaptive: true
+      },
+      EXPLORATION: {
+        min: 0.5,
+        max: 0.9,
+        default: 0.7,
+        adaptive: true
+      },
+      COMPARISON: {
+        min: 0.65,
+        max: 0.92,
+        default: 0.78,
+        adaptive: true
+      },
+      FACTUAL: {
+        min: 0.7,
+        max: 0.96,
+        default: 0.82,
+        adaptive: false // Factual queries need high confidence
+      },
+      CASUAL: {
+        min: 0.4,
+        max: 0.8,
+        default: 0.6,
+        adaptive: true
+      }
+    };
+    
+    // Initialize adaptive thresholds with defaults
+    Object.entries(this.thresholds).forEach(([intent, config]) => {
+      this.adaptiveThresholds.set(intent, config.default);
+    });
+  }
+  
+  validateConfidence(
+    intent: string,
+    confidence: number,
+    context?: any
+  ): ValidationResult {
+    const threshold = this.getThreshold(intent);
+    
+    if (confidence < threshold) {
+      return {
+        isValid: false,
+        confidence,
+        threshold,
+        reason: `Confidence ${confidence.toFixed(3)} below threshold ${threshold.toFixed(3)}`,
+        suggestions: this.generateSuggestions(intent, confidence, threshold)
+      };
+    }
+    
+    if (confidence > this.thresholds[intent as keyof ThresholdConfig]?.max || 1) {
+      return {
+        isValid: false,
+        confidence,
+        threshold,
+        reason: `Confidence ${confidence.toFixed(3)} above maximum threshold`,
+        suggestions: ['Consider if this is a false positive']
+      };
+    }
+    
+    return {
+      isValid: true,
+      confidence,
+      threshold
+    };
+  }
+  
+  private getThreshold(intent: string): number {
+    const config = this.thresholds[intent as keyof ThresholdConfig];
+    if (!config) {
+      return 0.7; // Default threshold
+    }
+    
+    if (config.adaptive) {
+      return this.adaptiveThresholds.get(intent) || config.default;
+    }
+    
+    return config.default;
+  }
+  
+  private generateSuggestions(
+    intent: string,
+    confidence: number,
+    threshold: number
+  ): string[] {
+    const suggestions: string[] = [];
+    const gap = threshold - confidence;
+    
+    if (gap > 0.2) {
+      suggestions.push('Consider using fallback classifier');
+      suggestions.push('Request user clarification');
+    } else if (gap > 0.1) {
+      suggestions.push('Try alternative embedding model');
+      suggestions.push('Expand training data for this intent');
+    } else {
+      suggestions.push('Slight adjustment to query might help');
+    }
+    
+    return suggestions;
+  }
+  
+  updateAdaptiveThreshold(intent: string, successRate: number): void {
+    const config = this.thresholds[intent as keyof ThresholdConfig];
+    if (!config?.adaptive) return;
+    
+    let currentThreshold = this.adaptiveThresholds.get(intent) || config.default;
+    
+    // Adjust threshold based on success rate
+    if (successRate > 0.9) {
+      // High success rate - can lower threshold slightly
+      currentThreshold = Math.max(config.min, currentThreshold - 0.02);
+    } else if (successRate < 0.7) {
+      // Low success rate - raise threshold
+      currentThreshold = Math.min(config.max, currentThreshold + 0.03);
+    }
+    
+    this.adaptiveThresholds.set(intent, currentThreshold);
+    
+    // Store historical data
+    if (!this.historicalData.has(intent)) {
+      this.historicalData.set(intent, []);
+    }
+    this.historicalData.get(intent)!.push(currentThreshold);
+    
+    // Keep only last 100 values
+    const history = this.historicalData.get(intent)!;
+    if (history.length > 100) {
+      history.splice(0, history.length - 100);
+    }
+  }
+  
+  getThresholdStats(): any {
+    const stats: any = {};
+    
+    for (const [intent, config] of Object.entries(this.thresholds)) {
+      const currentThreshold = this.adaptiveThresholds.get(intent) || config.default;
+      const history = this.historicalData.get(intent) || [];
+      
+      stats[intent] = {
+        current: currentThreshold,
+        default: config.default,
+        min: config.min,
+        max: config.max,
+        adaptive: config.adaptive,
+        history: history.slice(-10), // Last 10 values
+        trend: this.calculateTrend(history)
+      };
+    }
+    
+    return stats;
+  }
+  
+  private calculateTrend(history: number[]): string {
+    if (history.length < 2) return 'stable';
+    
+    const recent = history.slice(-5);
+    const older = history.slice(-10, -5);
+    
+    if (recent.length === 0 || older.length === 0) return 'stable';
+    
+    const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+    const olderAvg = older.reduce((a, b) => a + b, 0) / older.length;
+    
+    const diff = recentAvg - olderAvg;
+    
+    if (Math.abs(diff) < 0.01) return 'stable';
+    return diff > 0 ? 'increasing' : 'decreasing';
+  }
+  
+  resetThresholds(): void {
+    Object.entries(this.thresholds).forEach(([intent, config]) => {
+      this.adaptiveThresholds.set(intent, config.default);
+    });
+    this.historicalData.clear();
+  }
+  
+  setCustomThreshold(intent: string, threshold: number): void {
+    const config = this.thresholds[intent as keyof ThresholdConfig];
+    if (!config) return;
+    
+    const clampedThreshold = Math.max(config.min, Math.min(config.max, threshold));
+    this.adaptiveThresholds.set(intent, clampedThreshold);
+  }
+}
+EOF
+
+# Create confidence validation tests
+cat > tests/validation/confidence-validator.test.ts << 'EOF'
+import { ConfidenceValidator } from '../../lib/validation/confidence-validator';
+
+describe('Confidence Validator', () => {
+  let validator: ConfidenceValidator;
+  
+  beforeEach(() => {
+    validator = new ConfidenceValidator();
+  });
+  
+  test('should validate confidence above threshold', () => {
+    const result = validator.validateConfidence('SYNTHESIS', 0.8);
+    expect(result.isValid).toBe(true);
+    expect(result.confidence).toBe(0.8);
+  });
+  
+  test('should reject confidence below threshold', () => {
+    const result = validator.validateConfidence('SYNTHESIS', 0.5);
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toContain('below threshold');
+    expect(result.suggestions).toBeDefined();
+  });
+  
+  test('should reject confidence above maximum', () => {
+    const result = validator.validateConfidence('SYNTHESIS', 0.99);
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toContain('above maximum threshold');
+  });
+  
+  test('should handle unknown intent with default threshold', () => {
+    const result = validator.validateConfidence('UNKNOWN_INTENT', 0.6);
+    expect(result.isValid).toBe(false); // Default threshold is 0.7
+  });
+  
+  test('should update adaptive thresholds', () => {
+    // Test with high success rate
+    validator.updateAdaptiveThreshold('SYNTHESIS', 0.95);
+    const stats = validator.getThresholdStats();
+    expect(stats.SYNTHESIS.trend).toBe('decreasing'); // Threshold should decrease
+    
+    // Test with low success rate
+    validator.updateAdaptiveThreshold('SYNTHESIS', 0.6);
+    const stats2 = validator.getThresholdStats();
+    expect(stats2.SYNTHESIS.trend).toBe('increasing'); // Threshold should increase
+  });
+  
+  test('should not update non-adaptive thresholds', () => {
+    const initialStats = validator.getThresholdStats();
+    const initialThreshold = initialStats.FACTUAL.current;
+    
+    validator.updateAdaptiveThreshold('FACTUAL', 0.5);
+    const updatedStats = validator.getThresholdStats();
+    
+    expect(updatedStats.FACTUAL.current).toBe(initialThreshold);
+  });
+  
+  test('should generate appropriate suggestions', () => {
+    const result = validator.validateConfidence('SYNTHESIS', 0.4);
+    expect(result.suggestions).toContain('Consider using fallback classifier');
+    
+    const result2 = validator.validateConfidence('SYNTHESIS', 0.65);
+    expect(result2.suggestions).toContain('Try alternative embedding model');
+  });
+  
+  test('should set custom thresholds', () => {
+    validator.setCustomThreshold('SYNTHESIS', 0.9);
+    const stats = validator.getThresholdStats();
+    expect(stats.SYNTHESIS.current).toBe(0.9);
+  });
+  
+  test('should clamp custom thresholds to valid range', () => {
+    validator.setCustomThreshold('SYNTHESIS', 2.0); // Above max
+    const stats = validator.getThresholdStats();
+    expect(stats.SYNTHESIS.current).toBeLessThanOrEqual(0.95);
+    
+    validator.setCustomThreshold('SYNTHESIS', -1.0); // Below min
+    const stats2 = validator.getThresholdStats();
+    expect(stats2.SYNTHESIS.current).toBeGreaterThanOrEqual(0.6);
+  });
+  
+  test('should reset thresholds to defaults', () => {
+    validator.setCustomThreshold('SYNTHESIS', 0.9);
+    validator.resetThresholds();
+    
+    const stats = validator.getThresholdStats();
+    expect(stats.SYNTHESIS.current).toBe(0.75); // Default value
+  });
+});
+EOF
+
+# Update embedding classifier to use confidence validation
+cat > lib/intent/embedding-classifier-with-validation.ts << 'EOF'
+import { generateQueryEmbedding } from '../embeddings/embedding-service';
+import { calculateCosineSimilarity } from '../embeddings/similarity-calculator';
+import { ConfidenceValidator } from '../validation/confidence-validator';
+
+export interface ClassificationResult {
+  intent: string;
+  confidence: number;
+  isValid: boolean;
+  validationResult?: any;
+  alternatives?: Array<{ intent: string; confidence: number }>;
+}
+
+export class EmbeddingClassifierWithValidation {
+  private validator: ConfidenceValidator;
+  private intentPatterns: Map<string, number[][]> = new Map();
+  
+  constructor() {
+    this.validator = new ConfidenceValidator();
+  }
+  
+  async classify(query: string): Promise<ClassificationResult> {
+    try {
+      // Generate embedding for query
+      const queryEmbedding = await generateQueryEmbedding(query);
+      
+      // Find best match
+      let bestIntent = '';
+      let bestConfidence = 0;
+      const alternatives: Array<{ intent: string; confidence: number }> = [];
+      
+      for (const [intent, patterns] of this.intentPatterns) {
+        const maxSimilarity = Math.max(
+          ...patterns.map(pattern => calculateCosineSimilarity(queryEmbedding, pattern))
+        );
+        
+        alternatives.push({ intent, confidence: maxSimilarity });
+        
+        if (maxSimilarity > bestConfidence) {
+          bestConfidence = maxSimilarity;
+          bestIntent = intent;
+        }
+      }
+      
+      // Sort alternatives by confidence
+      alternatives.sort((a, b) => b.confidence - a.confidence);
+      
+      // Validate confidence
+      const validationResult = this.validator.validateConfidence(
+        bestIntent,
+        bestConfidence,
+        { query, alternatives }
+      );
+      
+      // Update adaptive threshold based on validation result
+      if (validationResult.isValid) {
+        // Assume success if validation passes
+        this.validator.updateAdaptiveThreshold(bestIntent, 0.9);
+      } else {
+        // Assume failure if validation fails
+        this.validator.updateAdaptiveThreshold(bestIntent, 0.6);
+      }
+      
+      return {
+        intent: bestIntent,
+        confidence: bestConfidence,
+        isValid: validationResult.isValid,
+        validationResult,
+        alternatives: alternatives.slice(0, 3) // Top 3 alternatives
+      };
+      
+    } catch (error) {
+      console.error('Classification error:', error);
+      throw new Error(`Classification failed: ${error.message}`);
+    }
+  }
+  
+  async addIntentPattern(intent: string, pattern: string): Promise<void> {
+    const embedding = await generateQueryEmbedding(pattern);
+    
+    if (!this.intentPatterns.has(intent)) {
+      this.intentPatterns.set(intent, []);
+    }
+    
+    this.intentPatterns.get(intent)!.push(embedding);
+  }
+  
+  getValidationStats(): any {
+    return this.validator.getThresholdStats();
+  }
+  
+  setCustomThreshold(intent: string, threshold: number): void {
+    this.validator.setCustomThreshold(intent, threshold);
+  }
+  
+  resetThresholds(): void {
+    this.validator.resetThresholds();
+  }
+}
+EOF
+
+# Create confidence validation integration test
+cat > tests/integration/confidence-validation.test.ts << 'EOF'
+import { EmbeddingClassifierWithValidation } from '../../lib/intent/embedding-classifier-with-validation';
+
+describe('Confidence Validation Integration', () => {
+  let classifier: EmbeddingClassifierWithValidation;
+  
+  beforeEach(async () => {
+    classifier = new EmbeddingClassifierWithValidation();
+    
+    // Add some test patterns
+    await classifier.addIntentPattern('SYNTHESIS', 'What are your skills?');
+    await classifier.addIntentPattern('SYNTHESIS', 'Tell me about your experience');
+    await classifier.addIntentPattern('EXPLORATION', 'How did you handle this project?');
+    await classifier.addIntentPattern('FACTUAL', 'How many years of experience?');
+  });
+  
+  test('should classify with confidence validation', async () => {
+    const result = await classifier.classify('What are your main skills?');
+    
+    expect(result.intent).toBe('SYNTHESIS');
+    expect(result.confidence).toBeGreaterThan(0);
+    expect(result.isValid).toBeDefined();
+    expect(result.validationResult).toBeDefined();
+    expect(result.alternatives).toBeDefined();
+  });
+  
+  test('should handle low confidence queries', async () => {
+    const result = await classifier.classify('Hello there');
+    
+    expect(result.intent).toBeDefined();
+    expect(result.confidence).toBeLessThan(0.8); // Should be low confidence
+    expect(result.isValid).toBe(false); // Should fail validation
+  });
+  
+  test('should provide validation suggestions', async () => {
+    const result = await classifier.classify('Random text that should not match');
+    
+    expect(result.validationResult.suggestions).toBeDefined();
+    expect(result.validationResult.suggestions.length).toBeGreaterThan(0);
+  });
+  
+  test('should adapt thresholds over time', async () => {
+    // Make multiple classifications to trigger adaptive behavior
+    for (let i = 0; i < 10; i++) {
+      await classifier.classify('What are your skills?');
+    }
+    
+    const stats = classifier.getValidationStats();
+    expect(stats.SYNTHESIS.history.length).toBeGreaterThan(0);
+  });
+  
+  test('should handle custom thresholds', async () => {
+    classifier.setCustomThreshold('SYNTHESIS', 0.9);
+    
+    const result = await classifier.classify('What are your skills?');
+    expect(result.isValid).toBe(false); // Should fail with higher threshold
+  });
+});
+EOF
+
+# Run confidence validation tests
+npm test tests/validation/confidence-validator.test.ts
+npm test tests/integration/confidence-validation.test.ts
+```
+
+**CHECKPOINT 1.3.5**:
+- [ ] Confidence threshold validation implemented
+- [ ] Adaptive thresholds working
+- [ ] Validation tests passing
+- [ ] Integration with classifier complete
+- [ ] Threshold monitoring active
+
+#### ZADANIE 1.3.6: Generate final Phase 1 report
 
 ```bash
 # Create Phase 1 summary report

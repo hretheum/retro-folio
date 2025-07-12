@@ -2484,6 +2484,225 @@ npx tsx scripts/generate-validation-3.1.ts
 - [ ] Decision is "APPROVED"
 - [ ] Next steps defined
 
+#### ZADANIE 3.1.7: Implement distributed tracing for agent communication
+
+```bash
+# Install tracing dependencies
+npm install @opentelemetry/api @opentelemetry/sdk-node @opentelemetry/auto-instrumentations-node @opentelemetry/exporter-jaeger
+
+# Create tracing configuration
+cat > lib/tracing/agent-tracer.ts << 'EOF'
+import { NodeSDK } from '@opentelemetry/sdk-node';
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
+import { Resource } from '@opentelemetry/resources';
+import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+import { trace, context, SpanStatusCode } from '@opentelemetry/api';
+
+export class AgentTracer {
+  private static instance: AgentTracer;
+  private sdk: NodeSDK;
+  
+  private constructor() {
+    const jaegerExporter = new JaegerExporter({
+      endpoint: process.env.JAEGER_ENDPOINT || 'http://localhost:14268/api/traces',
+    });
+    
+    this.sdk = new NodeSDK({
+      resource: new Resource({
+        [SemanticResourceAttributes.SERVICE_NAME]: 'agentic-rag-system',
+        [SemanticResourceAttributes.SERVICE_VERSION]: '1.0.0',
+      }),
+      traceExporter: jaegerExporter,
+      instrumentations: [getNodeAutoInstrumentations()],
+    });
+  }
+  
+  static getInstance(): AgentTracer {
+    if (!AgentTracer.instance) {
+      AgentTracer.instance = new AgentTracer();
+    }
+    return AgentTracer.instance;
+  }
+  
+  start(): void {
+    this.sdk.start();
+    console.log('🔍 Agent tracing started');
+  }
+  
+  stop(): void {
+    this.sdk.shutdown();
+    console.log('🔍 Agent tracing stopped');
+  }
+  
+  createAgentSpan(agentName: string, operation: string) {
+    const tracer = trace.getTracer('agentic-rag');
+    return tracer.startSpan(`${agentName}.${operation}`);
+  }
+  
+  addSpanEvent(span: any, eventName: string, attributes: Record<string, any> = {}) {
+    span.addEvent(eventName, attributes);
+  }
+  
+  setSpanError(span: any, error: Error) {
+    span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: error.message,
+    });
+    span.recordException(error);
+  }
+  
+  injectContext(carrier: any) {
+    const currentSpan = trace.getActiveSpan();
+    if (currentSpan) {
+      trace.inject(currentSpan.context(), carrier);
+    }
+  }
+  
+  extractContext(carrier: any) {
+    return trace.extract(carrier);
+  }
+}
+
+// Decorator for tracing agent operations
+export function traceAgentOperation(agentName: string, operation: string) {
+  return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
+    const method = descriptor.value;
+    
+    descriptor.value = async function (...args: any[]) {
+      const tracer = AgentTracer.getInstance();
+      const span = tracer.createAgentSpan(agentName, operation);
+      
+      try {
+        const result = await method.apply(this, args);
+        span.setStatus({ code: SpanStatusCode.OK });
+        return result;
+      } catch (error) {
+        tracer.setSpanError(span, error);
+        throw error;
+      } finally {
+        span.end();
+      }
+    };
+  };
+}
+EOF
+
+# Update base agent to include tracing
+cat > lib/agents/core/base-agent-with-tracing.ts << 'EOF'
+import { BaseAgent, AgentMessage } from './base-agent';
+import { AgentTracer, traceAgentOperation } from '../../tracing/agent-tracer';
+
+export abstract class BaseAgentWithTracing extends BaseAgent {
+  protected tracer: AgentTracer;
+  
+  constructor(config: any) {
+    super(config);
+    this.tracer = AgentTracer.getInstance();
+  }
+  
+  @traceAgentOperation('BaseAgent', 'handleMessage')
+  public async handleMessage(message: AgentMessage): Promise<AgentMessage> {
+    const span = this.tracer.createAgentSpan(this.config.name, 'handleMessage');
+    
+    try {
+      // Inject tracing context into message
+      this.tracer.injectContext(message.payload);
+      
+      const result = await super.handleMessage(message);
+      
+      // Add span events for important operations
+      this.tracer.addSpanEvent(span, 'message.processed', {
+        messageId: message.id,
+        processingTime: Date.now() - message.timestamp.getTime(),
+        success: result.type !== 'error'
+      });
+      
+      span.setStatus({ code: 1 }); // OK
+      return result;
+    } catch (error) {
+      this.tracer.setSpanError(span, error);
+      throw error;
+    } finally {
+      span.end();
+    }
+  }
+  
+  @traceAgentOperation('BaseAgent', 'processMessage')
+  protected async processMessage(message: AgentMessage): Promise<AgentMessage> {
+    const span = this.tracer.createAgentSpan(this.config.name, 'processMessage');
+    
+    try {
+      const result = await this.processMessageInternal(message);
+      
+      this.tracer.addSpanEvent(span, 'processing.completed', {
+        intent: result.payload?.intent,
+        confidence: result.payload?.confidence
+      });
+      
+      return result;
+    } catch (error) {
+      this.tracer.setSpanError(span, error);
+      throw error;
+    } finally {
+      span.end();
+    }
+  }
+  
+  protected abstract processMessageInternal(message: AgentMessage): Promise<AgentMessage>;
+}
+EOF
+
+# Create tracing test
+cat > tests/agents/tracing.test.ts << 'EOF'
+import { AgentTracer } from '../../lib/tracing/agent-tracer';
+
+describe('Agent Tracing', () => {
+  let tracer: AgentTracer;
+  
+  beforeEach(() => {
+    tracer = AgentTracer.getInstance();
+  });
+  
+  test('should create agent spans', () => {
+    const span = tracer.createAgentSpan('test-agent', 'test-operation');
+    expect(span).toBeDefined();
+    expect(span.name).toBe('test-agent.test-operation');
+  });
+  
+  test('should add span events', () => {
+    const span = tracer.createAgentSpan('test-agent', 'test-operation');
+    tracer.addSpanEvent(span, 'test.event', { key: 'value' });
+    expect(span).toBeDefined();
+  });
+  
+  test('should handle span errors', () => {
+    const span = tracer.createAgentSpan('test-agent', 'test-operation');
+    const error = new Error('Test error');
+    tracer.setSpanError(span, error);
+    expect(span).toBeDefined();
+  });
+  
+  test('should inject and extract context', () => {
+    const carrier: any = {};
+    tracer.injectContext(carrier);
+    const extractedContext = tracer.extractContext(carrier);
+    expect(extractedContext).toBeDefined();
+  });
+});
+EOF
+
+# Run tracing tests
+npm test tests/agents/tracing.test.ts
+```
+
+**CHECKPOINT 3.1.7**:
+- [ ] Distributed tracing implemented
+- [ ] All agent operations traced
+- [ ] Message bus tracing added
+- [ ] Tests passing
+- [ ] Jaeger integration configured
+
 ### Etap 3.2: Self-Reflection Mechanisms
 
 #### ZADANIE 3.2.1: Create reflection framework
