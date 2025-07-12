@@ -104,6 +104,9 @@ describe('Text Chunker', () => {
       const chunks = chunkText(longWord, { maxTokens: 100 });
       
       expect(chunks.length).toBeGreaterThan(1);
+      chunks.forEach(chunk => {
+        expect(chunk.tokens).toBeLessThanOrEqual(100);
+      });
     });
     
     it('should handle text with no sentence boundaries', () => {
