@@ -11,7 +11,13 @@
     "preview": "vite preview",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:comprehensive": "node scripts/run-comprehensive-tests.js",
+    "test:edge-cases": "node scripts/run-comprehensive-tests.js",
+    "test:chat-endpoints": "node scripts/test-chat-endpoints.js",
+    "test:smoke": "TEST_API_URL=http://localhost:3000 node scripts/run-comprehensive-tests.js --quick",
+    "test:security": "TEST_API_URL=http://localhost:3000 node -e \"const {runSecurityTests} = require('./scripts/run-comprehensive-tests.js'); runSecurityTests()\"",
+    "test:performance": "TEST_API_URL=http://localhost:3000 node -e \"const {runPerformanceTests} = require('./scripts/run-comprehensive-tests.js'); runPerformanceTests()\""
   },
   "dependencies": {
     "@pinecone-database/pinecone": "^6.1.1",
@@ -22,6 +28,8 @@
     "@vercel/kv": "^2.0.0",
     "@vercel/node": "^3.0.0",
     "ai": "^4.3.16",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
     "framer-motion": "^11.0.3",
     "leva": "^0.9.35",
     "lucide-react": "^0.344.0",
