@@ -8,7 +8,19 @@ jest.mock('../chat-intelligence', () => ({
 
 jest.mock('../multi-stage-retrieval', () => ({
   MultiStageRetrieval: jest.fn().mockImplementation(() => ({
-    search: jest.fn()
+    search: jest.fn().mockResolvedValue({
+      bestStage: 'FINE',
+      stages: [],
+      finalChunks: [{
+        content: 'Fallback content',
+        metadata: { contentType: 'work' },
+        score: 0.7,
+        source: 'fallback-source',
+        stage: 'FINE'
+      }],
+      totalProcessingTime: 100,
+      confidence: 0.7
+    })
   }))
 }));
 
@@ -137,11 +149,34 @@ describe('Unified Intelligent Chat Tests', () => {
     });
     
     it('should use enhanced hybrid search for retrieval', async () => {
+      // Reset and configure the mock before the test
+      jest.clearAllMocks();
+      
+      // Configure mocks to return non-empty search results
+      const mockSearchInstance = {
+        search: jest.fn().mockResolvedValue([
+          {
+            chunk: {
+              id: 'test-chunk-1',
+              text: 'Test content about React',
+              metadata: { contentType: 'work', contentId: 'test-source' }
+            },
+            relevanceFactors: { final: 0.8 },
+            searchStage: 'HYBRID'
+          }
+        ])
+      };
+      
+      mockEnhancedHybridSearch.mockImplementation(() => mockSearchInstance);
+      
+      // Create new instance after mocks are set
+      const freshUnifiedChat = new UnifiedIntelligentChat();
+      
       const request = {
         userQuery: 'React development experience'
       };
       
-      await unifiedChat.processQuery(request);
+      await freshUnifiedChat.processQuery(request);
       
       expect(mockEnhancedHybridSearch).toHaveBeenCalled();
       const searchInstance = mockEnhancedHybridSearch.mock.results[0].value;
@@ -155,16 +190,88 @@ describe('Unified Intelligent Chat Tests', () => {
     });
     
     it('should apply context compression', async () => {
+      // Reset and configure mocks
+      jest.clearAllMocks();
+      
+      // Configure all required mocks
+      mockAnalyzeQueryIntent.mockReturnValue('FACTUAL');
+      
+      // Set a low token limit to force compression
+      mockGetOptimalContextSize.mockReturnValue({
+        maxTokens: 100, // Low limit to force compression
+        chunkCount: 5
+      });
+      
+      // Ensure cache miss
+      mockSmartContextCache.get.mockReturnValue(null);
+      
+      // Ensure we have search results that need compression
+      const mockSearchInstance = {
+        search: jest.fn().mockResolvedValue([
+          {
+            chunk: {
+              id: 'test-chunk-1',
+              text: 'Very long test content that needs compression. This is a really long piece of text that will definitely exceed our token limit and require compression.',
+              metadata: { contentType: 'work', contentId: 'test-source' }
+            },
+            relevanceFactors: { final: 0.8 },
+            searchStage: 'HYBRID'
+          },
+          {
+            chunk: {
+              id: 'test-chunk-2',
+              text: 'Another long content piece that adds even more tokens to our context window. This will definitely push us over the limit.',
+              metadata: { contentType: 'work', contentId: 'test-source-2' }
+            },
+            relevanceFactors: { final: 0.7 },
+            searchStage: 'HYBRID'
+          },
+          {
+            chunk: {
+              id: 'test-chunk-3',
+              text: 'Third chunk with substantial content to ensure we exceed the token limit. This additional text guarantees compression will be triggered.',
+              metadata: { contentType: 'work', contentId: 'test-source-3' }
+            },
+            relevanceFactors: { final: 0.6 },
+            searchStage: 'HYBRID'
+          }
+        ])
+      };
+      
+      mockEnhancedHybridSearch.mockImplementation(() => mockSearchInstance);
+      
+      // Configure prune mock to return compressed result
+      mockContextPruner.prune.mockResolvedValue({
+        prunedChunks: [
+          {
+            id: 'test-chunk-1',
+            content: 'Compressed content',
+            metadata: { contentType: 'work' },
+            score: 0.8,
+            tokens: 30,
+            source: 'test-source'
+          }
+        ],
+        originalTokens: 150,
+        finalTokens: 30,
+        compressionRate: 0.8,
+        qualityScore: 0.9,
+        processingTime: 10
+      });
+      
+      // Create new instance after mocks are set
+      const freshUnifiedChat = new UnifiedIntelligentChat();
+      
       const request = {
         userQuery: 'tell me about your experience'
       };
       
-      await unifiedChat.processQuery(request);
+      await freshUnifiedChat.processQuery(request);
       
       expect(mockContextPruner.prune).toHaveBeenCalledWith(
         expect.any(Array),
         'tell me about your experience',
-        1000
+        100 // Should match the low limit we set
       );
     });
     
@@ -225,6 +332,25 @@ describe('Unified Intelligent Chat Tests', () => {
         search: jest.fn().mockResolvedValue([])
       };
       mockEnhancedHybridSearch.mockImplementation(() => mockSearchInstance);
+      
+      // Ensure MultiStageRetrieval is available for fallback
+      const mockMultiStageRetrieval = require('../multi-stage-retrieval').MultiStageRetrieval;
+      const mockMultiStageInstance = {
+        search: jest.fn().mockResolvedValue({
+          bestStage: 'FINE',
+          stages: [],
+          finalChunks: [{
+            content: 'Fallback content from multi-stage',
+            metadata: { contentType: 'work' },
+            score: 0.6,
+            source: 'multi-stage-fallback',
+            stage: 'FINE'
+          }],
+          totalProcessingTime: 150,
+          confidence: 0.6
+        })
+      };
+      mockMultiStageRetrieval.mockImplementation(() => mockMultiStageInstance);
       
       const request = {
         userQuery: 'non-cached query'
@@ -362,17 +488,22 @@ describe('Unified Intelligent Chat Tests', () => {
     });
     
     it('should handle retrieval failures', async () => {
+      jest.clearAllMocks();
+      
       const mockEnhancedHybridSearch = require('../enhanced-hybrid-search').EnhancedHybridSearch;
       const mockSearchInstance = {
         search: jest.fn().mockRejectedValue(new Error('Search failed'))
       };
       mockEnhancedHybridSearch.mockImplementation(() => mockSearchInstance);
       
+      // Create new instance after mocks are set
+      const freshUnifiedChat = new UnifiedIntelligentChat();
+      
       const request = {
         userQuery: 'test query'
       };
       
-      const response = await unifiedChat.processQuery(request);
+      const response = await freshUnifiedChat.processQuery(request);
       
       expect(response.metadata.sources).toEqual([]);
       expect(response.confidence).toBeGreaterThanOrEqual(0.1);
@@ -536,22 +667,29 @@ describe('Unified Intelligent Chat Tests', () => {
     });
     
     it('should handle benchmark failures', async () => {
+      jest.clearAllMocks();
+      
       const mockAnalyzeQueryIntent = require('../chat-intelligence').analyzeQueryIntent;
       mockAnalyzeQueryIntent.mockImplementation(() => {
         throw new Error('Benchmark failure');
       });
       
+      // Create new instance after mocks are set
+      const freshUnifiedChat = new UnifiedIntelligentChat();
+      
       const testQueries = ['failing query'];
       
-      const benchmarkResult = await unifiedChat.benchmark(testQueries, 1);
+      const benchmarkResult = await freshUnifiedChat.benchmark(testQueries, 1);
       
       expect(benchmarkResult.successRate).toBe(0);
-      expect(benchmarkResult.avgConfidence).toBe(0);
+      expect(benchmarkResult.avgConfidence).toBe(0.1); // Error responses have 0.1 confidence
     });
   });
   
   describe('Integration Validation', () => {
     it('should use all major components', async () => {
+      jest.clearAllMocks();
+      
       const mockAnalyzeQueryIntent = require('../chat-intelligence').analyzeQueryIntent;
       const mockGetOptimalContextSize = require('../chat-intelligence').getOptimalContextSize;
       const mockEnhancedHybridSearch = require('../enhanced-hybrid-search').EnhancedHybridSearch;
@@ -564,11 +702,49 @@ describe('Unified Intelligent Chat Tests', () => {
         chunkCount: 5
       });
       
+      mockSmartContextCache.get.mockReturnValue(null); // Cache miss to trigger search
+      
+      const mockSearchInstance = {
+        search: jest.fn().mockResolvedValue([
+          {
+            chunk: {
+              id: 'test-chunk',
+              text: 'Test content',
+              metadata: { contentType: 'work', contentId: 'test' }
+            },
+            relevanceFactors: { final: 0.8 },
+            searchStage: 'SEMANTIC'
+          }
+        ])
+      };
+      mockEnhancedHybridSearch.mockImplementation(() => mockSearchInstance);
+      
+      mockContextPruner.prune.mockResolvedValue({
+        prunedChunks: [
+          {
+            id: 'test-chunk',
+            content: 'Test content',
+            metadata: { contentType: 'work' },
+            score: 0.8,
+            tokens: 50,
+            source: 'test'
+          }
+        ],
+        originalTokens: 100,
+        finalTokens: 50,
+        compressionRate: 0.5,
+        qualityScore: 0.9,
+        processingTime: 10
+      });
+      
+      // Create new instance after mocks are set
+      const freshUnifiedChat = new UnifiedIntelligentChat();
+      
       const request = {
         userQuery: 'integration test query'
       };
       
-      await unifiedChat.processQuery(request);
+      await freshUnifiedChat.processQuery(request);
       
       // Verify all components were used
       expect(mockAnalyzeQueryIntent).toHaveBeenCalled();

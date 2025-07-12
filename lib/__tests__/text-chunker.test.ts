@@ -1,3 +1,11 @@
+// Mock OpenAI module
+jest.mock('../openai', () => ({
+  estimateTokens: jest.fn((text: string) => Math.ceil(text.length / 4)),
+  openai: {
+    apiKey: 'test-key'
+  }
+}));
+
 import { chunkText, chunkContent } from '../text-chunker';
 import { estimateTokens } from '../openai';
 import type { ExtractedContent } from '../content-extractor';

@@ -17,7 +17,11 @@
     "test:chat-endpoints": "node scripts/test-chat-endpoints.js",
     "test:smoke": "TEST_API_URL=http://localhost:3000 node scripts/run-comprehensive-tests.js --quick",
     "test:security": "TEST_API_URL=http://localhost:3000 node -e \"const {runSecurityTests} = require('./scripts/run-comprehensive-tests.js'); runSecurityTests()\"",
-    "test:performance": "TEST_API_URL=http://localhost:3000 node -e \"const {runPerformanceTests} = require('./scripts/run-comprehensive-tests.js'); runPerformanceTests()\""
+    "test:performance": "TEST_API_URL=http://localhost:3000 node -e \"const {runPerformanceTests} = require('./scripts/run-comprehensive-tests.js'); runPerformanceTests()\"",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:chromium": "playwright test --project=chromium"
   },
   "dependencies": {
     "@pinecone-database/pinecone": "^6.1.1",
@@ -43,6 +47,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@playwright/test": "^1.54.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -60,6 +65,8 @@
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.0.3",
     "jest-environment-jsdom": "^30.0.2",
+    "node-fetch": "^2.7.0",
+    "playwright": "^1.54.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "ts-jest": "^29.4.0",

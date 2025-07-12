@@ -1,3 +1,14 @@
+// Mock all dependencies before imports
+jest.mock('../openai', () => ({
+  estimateTokens: jest.fn((text: string) => Math.ceil(text.length / 4)),
+  openai: {
+    apiKey: 'test-key'
+  }
+}));
+jest.mock('@pinecone-database/pinecone');
+jest.mock('../pinecone-vector-store');
+jest.mock('../embedding-generator');
+
 import { analyzeQueryIntent, QueryIntent } from '../chat-intelligence';
 
 describe('Query Intent Analysis', () => {

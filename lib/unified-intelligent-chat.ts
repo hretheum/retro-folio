@@ -28,6 +28,12 @@ export interface ChatResponse {
     sources: string[];
     processingSteps: string[];
   };
+  performance: {
+    retrievalTime: number;
+    compressionTime: number;
+    cacheTime: number;
+    generationTime: number;
+  };
 }
 
 export interface ProcessingStats {
@@ -108,14 +114,14 @@ export class UnifiedIntelligentChat {
       });
       
       // Convert search results to ContextChunk format
-      const chunks: ContextChunk[] = searchResults.map((result, index) => ({
-        id: result.chunk?.id || `chunk-${Date.now()}-${index}`,
-        content: result.chunk?.text || '',
-        metadata: result.chunk?.metadata || {},
-        score: result.relevanceFactors?.final || result.score || 0,
-        tokens: Math.ceil((result.chunk?.text || '').length / 4), // Rough token estimation
-        source: result.chunk?.metadata?.contentId || 'unknown',
-        stage: result.searchStage || 'hybrid-search'
+      const chunks: ContextChunk[] = searchResults.map(result => ({
+        id: result.chunk.id,
+        content: result.chunk.text,
+        metadata: result.chunk.metadata,
+        score: result.relevanceFactors.final,
+        tokens: Math.ceil(result.chunk.text.length / 4), // Rough token estimation
+        source: result.chunk.metadata?.contentId || 'unknown',
+        stage: result.searchStage
       }));
       
       const searchTime = performance.now() - searchStart;
@@ -131,11 +137,11 @@ export class UnifiedIntelligentChat {
         const multiStageResult = await this.multiStageRetrieval.search(userQuery);
         const fallbackChunks: ContextChunk[] = multiStageResult.finalChunks.map((chunk, index) => ({
           id: `fallback-${Date.now()}-${index}`,
-          content: chunk.content || '',
-          metadata: chunk.metadata || {},
+          content: chunk.content,
+          metadata: chunk.metadata,
           score: chunk.score,
-          tokens: Math.ceil((chunk.content || '').length / 4),
-          source: chunk.source || 'fallback',
+          tokens: Math.ceil(chunk.content.length / 4),
+          source: chunk.source,
           stage: chunk.stage
         }));
         
@@ -388,6 +394,12 @@ export class UnifiedIntelligentChat {
           processingSteps: this.processingStats.map(stat => 
             `${stat.stage}: ${stat.duration.toFixed(2)}ms (${stat.success ? 'success' : 'failed'})`
           )
+        },
+        performance: {
+          retrievalTime: retrieval.processingTime,
+          compressionTime: compression.processingTime,
+          cacheTime: retrieval.cacheHit ? retrieval.processingTime : 0,
+          generationTime: generation.processingTime
         }
       };
       
@@ -406,6 +418,12 @@ export class UnifiedIntelligentChat {
           totalTokens: 0,
           sources: [],
           processingSteps: ['error: ' + error.message]
+        },
+        performance: {
+          retrievalTime: 0,
+          compressionTime: 0,
+          cacheTime: 0,
+          generationTime: 0
         }
       };
     }
