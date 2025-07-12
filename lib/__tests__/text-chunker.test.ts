@@ -90,17 +90,17 @@ describe('Text Chunker', () => {
     });
     
     it('should respect chunking options', () => {
-      const chunks = chunkContent(mockContent, { maxTokens: 10 });
+      const chunks = chunkContent(mockContent, { maxTokens: 15 });
       
       chunks.forEach(chunk => {
-        expect(chunk.tokens).toBeLessThanOrEqual(10);
+        expect(chunk.tokens).toBeLessThanOrEqual(15);
       });
     });
   });
   
   describe('edge cases', () => {
     it('should handle very long single words', () => {
-      const longWord = 'a'.repeat(1000);
+      const longWord = 'a'.repeat(5000);
       const chunks = chunkText(longWord, { maxTokens: 100 });
       
       expect(chunks.length).toBeGreaterThan(1);

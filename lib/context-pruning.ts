@@ -235,16 +235,20 @@ export class ContextPruner {
     // Sort chunks by their original position/metadata to maintain logical flow
     const sortedChunks = [...chunks].sort((a, b) => {
       // First by content type priority
-      const typeOrder = { 'work': 1, 'leadership': 2, 'experiment': 3, 'timeline': 4, 'contact': 5 };
-      const aOrder = typeOrder[a.metadata?.contentType] || 999;
-      const bOrder = typeOrder[b.metadata?.contentType] || 999;
+      const typeOrder: Record<string, number> = { 'work': 1, 'leadership': 2, 'experiment': 3, 'timeline': 4, 'contact': 5 };
+      const aContentType = a.metadata?.contentType as string;
+      const bContentType = b.metadata?.contentType as string;
+      const aOrder = typeOrder[aContentType] || 999;
+      const bOrder = typeOrder[bContentType] || 999;
       
       if (aOrder !== bOrder) return aOrder - bOrder;
       
-      // Then by date (newest first)
-      if (a.metadata?.date && b.metadata?.date) {
-        return new Date(b.metadata.date).getTime() - new Date(a.metadata.date).getTime();
-      }
+              // Then by date (newest first)
+        if (a.metadata?.date && b.metadata?.date) {
+          const aDate = a.metadata.date as string | number;
+          const bDate = b.metadata.date as string | number;
+          return new Date(bDate).getTime() - new Date(aDate).getTime();
+        }
       
       // Finally by score
       return b.score - a.score;
@@ -349,7 +353,8 @@ export class ContextPruner {
       
       // Calculate diversity score
       const isContentTypeDiverse = !contentTypesSeen.has(contentType);
-      const hasDiverseTech = technologies.some(tech => !technologiesSeen.has(tech));
+      const techArray = Array.isArray(technologies) ? technologies : [];
+      const hasDiverseTech = techArray.some(tech => !technologiesSeen.has(tech));
       
       const diversityScore = (isContentTypeDiverse ? 0.5 : 0) + (hasDiverseTech ? 0.5 : 0);
       
@@ -358,7 +363,7 @@ export class ContextPruner {
         pruned.push(chunk);
         
         if (contentType) contentTypesSeen.add(contentType);
-        technologies.forEach(tech => technologiesSeen.add(tech));
+        techArray.forEach(tech => technologiesSeen.add(tech));
       }
     }
     
@@ -375,23 +380,25 @@ export class ContextPruner {
     const originalCoverage = this.calculateQueryCoverage(originalChunks, queryWords);
     const prunedCoverage = this.calculateQueryCoverage(prunedChunks, queryWords);
     
-    const coverageRetention = originalCoverage > 0 ? prunedCoverage / originalCoverage : 1;
+    const coverageRetention = Math.min(1, originalCoverage > 0 ? prunedCoverage / originalCoverage : 1);
     
     // Information density score
     const originalDensity = this.calculateInformationDensity(originalChunks);
     const prunedDensity = this.calculateInformationDensity(prunedChunks);
     
-    const densityImprovement = originalDensity > 0 ? prunedDensity / originalDensity : 1;
+    const densityImprovement = Math.min(1, originalDensity > 0 ? prunedDensity / originalDensity : 1);
     
     // Metadata preservation score
-    const metadataPreservation = this.calculateMetadataPreservation(originalChunks, prunedChunks);
+    const metadataPreservation = Math.min(1, this.calculateMetadataPreservation(originalChunks, prunedChunks));
     
-    // Weighted combination
-    return (
+    // Weighted combination - ensure result is <= 1.0
+    const qualityScore = (
       coverageRetention * 0.4 +
       densityImprovement * 0.3 +
       metadataPreservation * 0.3
     );
+    
+    return Math.min(1, Math.max(0, qualityScore));
   }
   
   private calculateQueryCoverage(chunks: ContextChunk[], queryWords: string[]): number {
@@ -488,15 +495,23 @@ export class ContextPruner {
       // Step 1: Calculate attention scores for all chunks
       const chunksWithAttention = chunks.map(chunk => ({
         ...chunk,
-        score: this.calculateAttentionScore(chunk, userQuery, chunks, config)
+        attentionScore: this.calculateAttentionScore(chunk, userQuery, chunks, config)
       }));
       
       // Step 2: Sort by attention score
-      const sortedChunks = chunksWithAttention.sort((a, b) => b.score - a.score);
+      const sortedChunks = chunksWithAttention.sort((a, b) => b.attentionScore - a.attentionScore);
       
       // Step 3: Progressive pruning to reach target tokens
       let currentTokens = originalTokens;
-      let prunedChunks = [...sortedChunks];
+      let prunedChunks: ContextChunk[] = sortedChunks.map(chunk => ({
+        id: chunk.id,
+        content: chunk.content,
+        metadata: chunk.metadata,
+        score: chunk.score, // Preserve original score
+        tokens: chunk.tokens,
+        source: chunk.source,
+        stage: chunk.stage
+      }));
       
       while (currentTokens > targetTokens && prunedChunks.length > 1) {
         // Remove the lowest scoring chunk

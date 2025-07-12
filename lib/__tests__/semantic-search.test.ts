@@ -1,4 +1,4 @@
-import { cosineSimilarity, buildContextWindow } from '../semantic-search';
+import { cosineSimilarity, buildContextWindow, semanticSearch } from '../semantic-search';
 import type { SearchResult } from '../vector-store';
 import type { EmbeddedChunk } from '../embedding-generator';
 
