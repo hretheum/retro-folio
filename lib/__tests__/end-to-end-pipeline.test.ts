@@ -1,11 +1,9 @@
 import { unifiedIntelligentChat } from '../unified-intelligent-chat';
 import { analyzeQueryIntent } from '../chat-intelligence';
 import { 
-  createMockChatResponse,
-  generateTestQueries,
   expectPerformanceWithinLimits,
   expectValidConfidence
-} from './__mocks__/test-utils';
+} from './__mocks__/unified-mocks';
 
 // Mock external dependencies for E2E testing
 jest.mock('../pinecone-vector-store', () => ({
@@ -95,15 +93,21 @@ describe('End-to-End Pipeline Tests - Phase 4 Validation', () => {
     });
     
     it('should handle all query types through full pipeline', async () => {
-      const testQueries = generateTestQueries();
+      const testQueries = [
+        { query: 'Tell me about React development', expectedType: 'FACTUAL' },
+        { query: 'What is your experience with TypeScript?', expectedType: 'FACTUAL' },
+        { query: 'How do you approach complex problems?', expectedType: 'SYNTHESIS' },
+        { query: 'Compare React and Vue.js', expectedType: 'COMPARISON' },
+        { query: 'Hello, how are you?', expectedType: 'CASUAL' }
+      ];
       
-      const results = await Promise.all([
-        unifiedIntelligentChat.processQuery({ userQuery: testQueries.factual[0] }),
-        unifiedIntelligentChat.processQuery({ userQuery: testQueries.casual[0] }),
-        unifiedIntelligentChat.processQuery({ userQuery: testQueries.exploration[0] }),
-        unifiedIntelligentChat.processQuery({ userQuery: testQueries.comparison[0] }),
-        unifiedIntelligentChat.processQuery({ userQuery: testQueries.synthesis[0] })
-      ]);
+              const results = await Promise.all([
+          unifiedIntelligentChat.processQuery({ userQuery: testQueries[0].query }),
+          unifiedIntelligentChat.processQuery({ userQuery: testQueries[1].query }),
+          unifiedIntelligentChat.processQuery({ userQuery: testQueries[2].query }),
+          unifiedIntelligentChat.processQuery({ userQuery: testQueries[3].query }),
+          unifiedIntelligentChat.processQuery({ userQuery: testQueries[4].query })
+        ]);
       
       results.forEach((result, index) => {
         expect(result).toHaveProperty('response');

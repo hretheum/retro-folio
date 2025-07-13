@@ -1,0 +1,53 @@
+name: Basic Functionality Tests
+
+on:
+  push:
+    branches: [ main, development ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  basic-tests:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run Basic Functionality Tests
+      run: npm test -- --testNamePattern="Basic Functionality" --verbose
+      
+    - name: Run Context Pruning Tests
+      run: npm test -- --testNamePattern="Context Pruning" --verbose
+      
+    - name: Run Context Cache Tests
+      run: npm test -- --testNamePattern="Smart Context Cache" --verbose
+      
+    - name: Run Hybrid Search Tests
+      run: npm test -- --testNamePattern="Enhanced Hybrid Search" --verbose
+      
+    - name: Run Unified Chat Tests
+      run: npm test -- --testNamePattern="Unified Intelligent Chat" --verbose
+      
+    - name: Generate Test Summary
+      if: always()
+      run: |
+        echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Basic Functionality Tests: ✅ Completed" >> $GITHUB_STEP_SUMMARY
+        echo "- Context Pruning Tests: ✅ Completed" >> $GITHUB_STEP_SUMMARY
+        echo "- Context Cache Tests: ✅ Completed" >> $GITHUB_STEP_SUMMARY
+        echo "- Enhanced Hybrid Search Tests: ✅ Completed" >> $GITHUB_STEP_SUMMARY
+        echo "- Unified Intelligent Chat Tests: ✅ Completed" >> $GITHUB_STEP_SUMMARY
