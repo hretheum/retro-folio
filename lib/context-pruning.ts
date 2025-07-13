@@ -387,11 +387,14 @@ export class ContextPruner {
     const metadataPreservation = this.calculateMetadataPreservation(originalChunks, prunedChunks);
     
     // Weighted combination
-    return (
+    const rawScore = (
       coverageRetention * 0.4 +
       densityImprovement * 0.3 +
       metadataPreservation * 0.3
     );
+    
+    // Normalize to 0-1 range
+    return Math.min(Math.max(rawScore, 0), 1);
   }
   
   private calculateQueryCoverage(chunks: ContextChunk[], queryWords: string[]): number {

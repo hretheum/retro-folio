@@ -15,10 +15,10 @@ function analyzeQueryIntent(userQuery: string): QueryIntentType {
   const query = userQuery.toLowerCase();
   
   const polishPatterns = {
-    synthesis: /co potrafisz|jakie są.*umiejętności|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj/,
-    exploration: /opowiedz|więcej|szczegół|jak.*proces|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób/,
-    comparison: /porównaj|versus|vs|różnic|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne/,
-    factual: /ile(?!\s+razy)|kiedy|gdzie|kto|która|które|jakie(?!\s+są)|jaki(?!\s+sposób)|data|rok|liczba|wiek|czas|długo|dużo|mało|konkretnie|dokładnie|precyzyjnie|faktycznie/
+    synthesis: /co potrafisz|jakie są.*umiejętności|jakie są.*kompetencje|główne kompetencje|analiz|syntez|umiejętności|kompetencj|przegląd|podsumuj|oceń|jak wyglądają|przedstaw|scharakteryzuj/,
+    exploration: /opowiedz|więcej|szczegół|jak.*proces|jak skalowałeś|dlaczego|historia|metodologia|rozwin|wyjaśnij|opisz|co się działo|jak to|w jaki sposób/,
+    comparison: /porównaj|versus|vs|różnic|różnice między|lepsze|gorsze|wybór|alternatyw|zestawiaj|różnią się|podobne|inne|pod względem/,
+    factual: /^ile(?!\s+razy)|^kiedy|^gdzie|^kto|^która|^które|^jakie(?!\s+są)|^jaki(?!\s+sposób)|konkretnie ile|dokładnie|precyzyjnie|faktycznie/
   };
   
   const englishPatterns = {
@@ -27,10 +27,6 @@ function analyzeQueryIntent(userQuery: string): QueryIntentType {
     comparison: /versus|vs|differ|better|worse|choice|alternative|compare|contrast|similar|different|between/,
     factual: /how\s+(much|many|long|old)|when|where|who|what(?!\s+are)|which|date|year|number|age|time|specific|exact|precise|fact/
   };
-  
-  if (polishPatterns.factual.test(query) || englishPatterns.factual.test(query)) {
-    return 'FACTUAL';
-  }
   
   if (polishPatterns.synthesis.test(query) || englishPatterns.synthesis.test(query)) {
     return 'SYNTHESIS';
@@ -42,6 +38,10 @@ function analyzeQueryIntent(userQuery: string): QueryIntentType {
   
   if (polishPatterns.comparison.test(query) || englishPatterns.comparison.test(query)) {
     return 'COMPARISON';
+  }
+  
+  if (polishPatterns.factual.test(query) || englishPatterns.factual.test(query)) {
+    return 'FACTUAL';
   }
   
   return 'CASUAL';

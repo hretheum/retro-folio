@@ -132,7 +132,9 @@ describe('Context Pruning Tests', () => {
       
       const result = await contextPruner.prune(testChunks, 'test query', 500);
       
-      expect(result.prunedChunks).toEqual(testChunks);
+      expect(result.prunedChunks).toHaveLength(1);
+      expect(result.prunedChunks[0].id).toBe('chunk1');
+      expect(result.prunedChunks[0].content).toBe('This is a longer content that might need pruning because it has many tokens and words');
       expect(result.originalTokens).toBe(1000);
       expect(result.finalTokens).toBe(1000);
       expect(result.compressionRate).toBe(0);

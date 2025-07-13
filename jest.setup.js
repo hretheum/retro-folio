@@ -60,11 +60,39 @@ jest.mock('@pinecone-database/pinecone', () => ({
   Pinecone: jest.fn().mockImplementation(() => ({
     index: jest.fn().mockReturnValue({
       namespace: jest.fn().mockReturnValue({
-        query: jest.fn().mockResolvedValue({ matches: [] }),
+        query: jest.fn().mockResolvedValue({ 
+          matches: [
+            {
+              id: 'test-chunk-1',
+              score: 0.8,
+              metadata: {
+                text: 'Test content for Pinecone mock',
+                contentType: 'work',
+                contentId: 'test-content-1',
+                source: 'test',
+                tokens: 150
+              }
+            }
+          ]
+        }),
         upsert: jest.fn().mockResolvedValue({}),
         fetch: jest.fn().mockResolvedValue({ records: [] })
       }),
-      query: jest.fn().mockResolvedValue({ matches: [] }),
+      query: jest.fn().mockResolvedValue({ 
+        matches: [
+          {
+            id: 'test-chunk-1',
+            score: 0.8,
+            metadata: {
+              text: 'Test content for Pinecone mock',
+              contentType: 'work',
+              contentId: 'test-content-1',
+              source: 'test',
+              tokens: 150
+            }
+          }
+        ]
+      }),
       upsert: jest.fn().mockResolvedValue({}),
       describe: jest.fn().mockResolvedValue({ dimension: 1536 })
     })

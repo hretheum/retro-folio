@@ -9,6 +9,11 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
   // Check for specific SYNTHESIS patterns first
   if (/jakie\s+(są\s+)?(twoje\s+)?umiejętności/.test(query) ||
       /co\s+potrafisz/.test(query) ||
+      /jakie\s+są\s+twoje\s+główne\s+kompetencje/.test(query) ||
+      /kompetencje/.test(query) ||
+      /twoje\s+główne/.test(query) ||
+      /przedstaw/.test(query) ||
+      query.includes('przedstaw swoje kompetencje') ||
       /your\s+(key\s+)?.*competenc/.test(query) ||
       /your\s+skills/.test(query) ||
       /analiz.*approach/.test(query) ||
@@ -17,13 +22,15 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
       /present.*capabilities/.test(query) ||
       /oceń.*doświadczenie/.test(query) ||
       /characterize.*work/.test(query) ||
-      /what\s+(are\s+)?your/.test(query) & /skills|competenc|capabilities/.test(query)) {
+      /what\s+(are\s+)?your/.test(query) && /skills|competenc|capabilities/.test(query)) {
     return 'SYNTHESIS';
   }
   
   // Check for EXPLORATION patterns
   if (/opowiedz.*o\s+projekt/.test(query) ||
       /opowiedz\s+więcej/.test(query) ||
+      /opowiedz\s+mi\s+więcej/.test(query) ||
+      /jak\s+skalowałeś/.test(query) ||
       /tell\s+me\s+about/.test(query) ||
       /jak\s+wyglądał.*proces/.test(query) ||
       /explain.*methodology/.test(query) ||
@@ -40,6 +47,9 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
   if (/które.*bardziej.*challenging/.test(query) ||
       /które.*były.*bardziej/.test(query) ||
       /porównaj/.test(query) ||
+      /jakie\s+są\s+różnice/.test(query) ||
+      /różnice\s+między/.test(query) ||
+      /pod\s+względem/.test(query) ||
       /differences?\s+between/.test(query) ||
       /compare/.test(query) ||
       /różnice?\s+między/.test(query) ||
