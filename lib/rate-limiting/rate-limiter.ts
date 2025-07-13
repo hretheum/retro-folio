@@ -12,7 +12,7 @@ export interface RateLimitConfig {
 }
 
 export class RateLimiter {
-  private redis: Redis;
+  private redis: any;
   private limiters: Map<string, RateLimiterRedis> = new Map();
   
   constructor() {
