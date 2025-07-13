@@ -34,4 +34,6 @@ class LocalIndex {
   }
 }
 
-export { LocalIndex };
+module.exports = {
+  LocalIndex
+};

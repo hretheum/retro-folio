@@ -8,4 +8,6 @@ function createClient(options) {
   };
 }
 
-export { createClient };
+module.exports = {
+  createClient
+};

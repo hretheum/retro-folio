@@ -1,5 +1,5 @@
 // Jest setup for test environment
-import { config } from 'dotenv';
+const { config } = require('dotenv');
 
 // Load test environment variables
 config({ path: '.env.test' });
@@ -22,8 +22,8 @@ if (typeof performance === 'undefined') {
 
 // Mock TextEncoder/TextDecoder for tests
 if (typeof TextEncoder === 'undefined') {
-  global.TextEncoder = (await import('util')).TextEncoder;
-  global.TextDecoder = (await import('util')).TextDecoder;
+  global.TextEncoder = require('util').TextEncoder;
+  global.TextDecoder = require('util').TextDecoder;
 }
 
 // Console overrides for cleaner test output
