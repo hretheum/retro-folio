@@ -1656,7 +1656,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { phase, stage, serviceMetrics } = req.body;
+    const { phase, stage } = req.body;
     
     // Validate microservices migration
     const validationResults = {
