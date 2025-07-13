@@ -6,8 +6,12 @@ export type QueryIntent = 'SYNTHESIS' | 'EXPLORATION' | 'COMPARISON' | 'FACTUAL'
 export function analyzeQueryIntent(userQuery: string): QueryIntent {
   const query = userQuery.toLowerCase();
   
-  // Check for specific SYNTHESIS patterns first
-  if (/jakie\s+(są\s+)?(twoje\s+)?umiejętności/.test(query) ||
+  // Priority 1: Contextual pattern matching (most specific)
+  // Check for skills/competencies questions (SYNTHESIS)
+  if ((query.includes('jakie') && query.includes('umiejętności')) ||
+      (query.includes('co') && query.includes('potrafisz')) ||
+      (query.includes('what') && (query.includes('skills') || query.includes('competenc') || query.includes('capabilit'))) ||
+      /jakie\s+są\s+twoje\s+umiejętności/.test(query) ||
       /co\s+potrafisz/.test(query) ||
       /your\s+(key\s+)?.*competenc/.test(query) ||
       /your\s+skills/.test(query) ||
@@ -17,12 +21,15 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
       /present.*capabilities/.test(query) ||
       /oceń.*doświadczenie/.test(query) ||
       /characterize.*work/.test(query) ||
-      /what\s+(are\s+)?your/.test(query) & /skills|competenc|capabilities/.test(query)) {
+      (/what\s+(are\s+)?your/.test(query) && /skills|competenc|capabilities/.test(query))) {
     return 'SYNTHESIS';
   }
   
-  // Check for EXPLORATION patterns
-  if (/opowiedz.*o\s+projekt/.test(query) ||
+  // Check for exploration requests (EXPLORATION)
+  if ((query.includes('opowiedz') && (query.includes('projekt') || query.includes('więcej'))) ||
+      (query.includes('tell') && query.includes('about')) ||
+      (query.includes('explain') || query.includes('describe')) ||
+      /opowiedz.*(o|więcej).*(projekt|doświadczen)/.test(query) ||
       /opowiedz\s+więcej/.test(query) ||
       /tell\s+me\s+about/.test(query) ||
       /jak\s+wyglądał.*proces/.test(query) ||
@@ -36,21 +43,25 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
     return 'EXPLORATION';
   }
   
-  // Check for COMPARISON patterns
-  if (/które.*bardziej.*challenging/.test(query) ||
+  // Check for comparison requests (COMPARISON)
+  if ((query.includes('porównaj') || query.includes('compare')) ||
+      (query.includes('różnic') || query.includes('differ')) ||
+      (query.includes('lepsze') || query.includes('better')) ||
+      (query.includes('które') && (query.includes('bardziej') || query.includes('challenging'))) ||
+      /które.*(bardziej|challenging|trudniejsze)/.test(query) ||
       /które.*były.*bardziej/.test(query) ||
       /porównaj/.test(query) ||
       /differences?\s+between/.test(query) ||
       /compare/.test(query) ||
       /różnice?\s+między/.test(query) ||
-      /what\s+is\s+better/.test(query) ||
+      /what\s+is\s+(better|worse)/.test(query) ||
       /podobieństwa/.test(query) ||
       /contrast/.test(query) ||
       /versus|vs/.test(query)) {
     return 'COMPARISON';
   }
   
-  // Check for FACTUAL patterns (more restrictive)
+  // Priority 2: Specific FACTUAL patterns (more restrictive)
   if (/^ile\s+lat/.test(query) ||
       /^kiedy\s+/.test(query) ||
       /^gdzie\s+/.test(query) ||
@@ -67,21 +78,23 @@ export function analyzeQueryIntent(userQuery: string): QueryIntent {
   }
   
   // Check for CASUAL patterns
-  if (/^cześć|^hello|^hi\s|^dzięki|^thanks|^jak\s+się\s+masz|^how\s+are\s+you|^miłego|^have\s+a\s+great|^tak$|^no$|^yes$/.test(query) ||
-      query.length < 15 && !/\?/.test(query)) {
+  if (/^(cześć|hello|hi\s|dzięki|thanks|jak\s+się\s+masz|how\s+are\s+you|miłego|have\s+a\s+great|tak|no|yes)(\s|$)/.test(query) ||
+      (query.length < 15 && !/\?/.test(query))) {
     return 'CASUAL';
   }
   
-  // Default fallback based on question words
+  // Priority 3: Fallback based on context and keywords
   if (/opowiedz|tell\s+me|explain|describe/.test(query)) {
     return 'EXPLORATION';
   }
   
-  if (/jakie|what|which/.test(query) && /umiejętności|skills|competenc/.test(query)) {
+  if ((query.includes('jakie') || query.includes('what')) && 
+      (query.includes('umiejętności') || query.includes('skills') || query.includes('competenc'))) {
     return 'SYNTHESIS';
   }
   
-  if (/ile|kiedy|gdzie|when|where|how\s+many|how\s+much/.test(query)) {
+  // Only catch clearly factual questions in fallback
+  if (/^(ile|kiedy|gdzie|when|where|how\s+many|how\s+much)\s/.test(query)) {
     return 'FACTUAL';
   }
   

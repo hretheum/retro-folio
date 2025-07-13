@@ -84,11 +84,11 @@ function getOptimalContextSize(userQuery: string, queryLength: number = 0): Cont
       topKMultiplier: 0.8
     },
     EXPLORATION: {
-      maxTokens: 1200,
-      chunkCount: 6,
+      maxTokens: 1600,
+      chunkCount: 8,
       diversityBoost: true,
       queryExpansion: true,
-      topKMultiplier: 1.5
+      topKMultiplier: 2.0
     },
     COMPARISON: {
       maxTokens: 1800,
