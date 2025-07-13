@@ -5460,7 +5460,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { phase, stage, reflectionMetrics } = req.body;
+    const { phase, stage } = req.body;
     
     // Validate self-reflection mechanisms
     const validationResults = {
