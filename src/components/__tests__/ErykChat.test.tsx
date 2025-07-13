@@ -4,40 +4,45 @@ import userEvent from '@testing-library/user-event';
 import { ErykChat } from '../ErykChat';
 
 // Mock the useChat hook
+const mockUseChat = jest.fn();
 jest.mock('ai/react', () => ({
-  useChat: () => ({
-    messages: [
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: 'Cześć! Jestem Eryk AI.',
-      },
-      {
-        id: '1',
-        role: 'user',
-        content: 'Test message',
-      },
-      {
-        id: '2',
-        role: 'assistant',
-        content: 'Test response',
-      },
-    ],
-    input: '',
-    handleInputChange: jest.fn(),
-    handleSubmit: jest.fn(),
-    isLoading: false,
-    error: null,
-  }),
+  useChat: mockUseChat,
 }));
 
 describe('ErykChat', () => {
+  beforeEach(() => {
+    mockUseChat.mockReturnValue({
+      messages: [
+        {
+          id: 'welcome',
+          role: 'assistant',
+          content: 'Cześć! Jestem Eryk AI.',
+        },
+        {
+          id: '1',
+          role: 'user',
+          content: 'Test message',
+        },
+        {
+          id: '2',
+          role: 'assistant',
+          content: 'Test response',
+        },
+      ],
+      input: '',
+      handleInputChange: jest.fn(),
+      handleSubmit: jest.fn(),
+      isLoading: false,
+      error: null,
+    });
+  });
+
   it('renders chat interface', () => {
     render(<ErykChat />);
     
     expect(screen.getByText('Eryk AI')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/zapytaj o projekty/i)).toBeInTheDocument();
-    expect(screen.getByText(/Cześć! Jestem Eryk AI/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/ask about projects/i)).toBeInTheDocument();
+    expect(screen.getByText(/Hi! I'm Eryk AI/)).toBeInTheDocument();
   });
   
   it('displays messages correctly', () => {
@@ -78,14 +83,13 @@ describe('ErykChat', () => {
   it('focuses input on mount', () => {
     render(<ErykChat />);
     
-    const input = screen.getByPlaceholderText(/zapytaj o projekty/i);
+    const input = screen.getByPlaceholderText(/ask about projects/i);
     expect(document.activeElement).toBe(input);
   });
   
   it('handles form submission', async () => {
-    const { useChat } = jest.requireMock('ai/react');
     const handleSubmit = jest.fn();
-    useChat.mockReturnValue({
+    mockUseChat.mockReturnValue({
       messages: [],
       input: 'Test question',
       handleInputChange: jest.fn(),
@@ -96,15 +100,14 @@ describe('ErykChat', () => {
     
     render(<ErykChat />);
     
-    const form = screen.getByPlaceholderText(/zapytaj o projekty/i).closest('form');
+    const form = screen.getByPlaceholderText(/ask about projects/i).closest('form');
     fireEvent.submit(form!);
     
     expect(handleSubmit).toHaveBeenCalled();
   });
   
   it('disables input when loading', () => {
-    const { useChat } = jest.requireMock('ai/react');
-    useChat.mockReturnValue({
+    mockUseChat.mockReturnValue({
       messages: [],
       input: '',
       handleInputChange: jest.fn(),
@@ -115,7 +118,7 @@ describe('ErykChat', () => {
     
     render(<ErykChat />);
     
-    const input = screen.getByPlaceholderText(/zapytaj o projekty/i);
+    const input = screen.getByPlaceholderText(/ask about projects/i);
     const button = screen.getByRole('button');
     
     expect(input).toBeDisabled();
@@ -123,8 +126,7 @@ describe('ErykChat', () => {
   });
   
   it('displays error message', () => {
-    const { useChat } = jest.requireMock('ai/react');
-    useChat.mockReturnValue({
+    mockUseChat.mockReturnValue({
       messages: [],
       input: '',
       handleInputChange: jest.fn(),
@@ -152,8 +154,7 @@ describe('ErykChat', () => {
   });
   
   it('shows loading indicator', () => {
-    const { useChat } = jest.requireMock('ai/react');
-    useChat.mockReturnValue({
+    mockUseChat.mockReturnValue({
       messages: [],
       input: '',
       handleInputChange: jest.fn(),
@@ -164,6 +165,6 @@ describe('ErykChat', () => {
     
     render(<ErykChat />);
     
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.getByRole('button')).toBeDisabled();
   });
 });

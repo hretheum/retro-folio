@@ -95,7 +95,9 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
   
   // Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current?.scrollIntoView) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
   
   // Focus input on open
