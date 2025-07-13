@@ -17,6 +17,7 @@ const TEST_CONFIG = {
     CHAT_LLM: '/api/ai/chat-with-llm',
     CHAT_STREAMING: '/api/ai/chat-streaming',
     INTELLIGENT_CHAT: '/api/ai/intelligent-chat',
+    INTELLIGENT_CHAT_CONTEXTUAL: '/api/ai/intelligent-chat-contextual',
     TEST_CHAT: '/api/test-chat',
   },
   

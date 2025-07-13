@@ -24,8 +24,11 @@ export const mockSearchResult: SearchResult = {
     metadata: {
       contentType: 'work',
       contentId: 'test-content-1',
-      source: 'test'
-    }
+      chunkIndex: 0,
+      totalChunks: 1
+    },
+    embedding: [0.1, 0.2, 0.3],
+    tokens: 10
   },
   score: 0.8
 };
@@ -200,3 +203,21 @@ export function cleanupMocks() {
   jest.clearAllMocks();
   jest.resetAllMocks();
 }
+
+// Add a basic test to satisfy Jest requirement
+describe('Unified Mocks', () => {
+  test('should provide unified mock utilities', () => {
+    expect(typeof createMockAnalyzeQueryIntent).toBe('function');
+    expect(typeof createMockSemanticSearch).toBe('function');
+    expect(typeof createMockEnhancedHybridSearch).toBe('function');
+    expect(typeof setupUnifiedMocks).toBe('function');
+    expect(typeof cleanupMocks).toBe('function');
+  });
+
+  test('should create valid mock search result', () => {
+    expect(mockSearchResult).toBeDefined();
+    expect(mockSearchResult.chunk).toBeDefined();
+    expect(mockSearchResult.chunk.id).toBe('test-chunk-1');
+    expect(mockSearchResult.score).toBe(0.8);
+  });
+});

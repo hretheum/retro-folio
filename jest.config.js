@@ -7,14 +7,17 @@ export default {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(jpg|jpeg|png|gif|svg|mp3)$': '<rootDir>/src/__mocks__/fileMock.js',
     '^vectra$': '<rootDir>/src/__mocks__/vectraMock.js',
-    '^redis$': '<rootDir>/src/__mocks__/redisMock.js'
+    '^redis$': '<rootDir>/src/__mocks__/redisMock.js',
+    '^ioredis$': '<rootDir>/src/__mocks__/redisMock.js',
+    '^rate-limiter-flexible$': '<rootDir>/src/__mocks__/rate-limiter-flexible.js'
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   testMatch: [
     '<rootDir>/src/**/__tests__/**/*.{ts,tsx}',
     '<rootDir>/src/**/*.{test,spec}.{ts,tsx}',
     '<rootDir>/lib/**/__tests__/**/*.{ts,tsx}',
-    '<rootDir>/lib/**/*.{test,spec}.{ts,tsx}'
+    '<rootDir>/lib/**/*.{test,spec}.{ts,tsx}',
+    '<rootDir>/tests/**/*.{test,spec}.{ts,tsx}'
   ],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

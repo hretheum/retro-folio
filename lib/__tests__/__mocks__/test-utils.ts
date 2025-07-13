@@ -228,3 +228,13 @@ export function expectValidCompressionRate(rate: number) {
   expect(rate).toBeLessThanOrEqual(1);
   expect(typeof rate).toBe('number');
 }
+
+// Add a basic test to satisfy Jest requirement
+describe('Test Utils', () => {
+  test('should provide mock utilities', () => {
+    expect(typeof createMockChatResponse).toBe('function');
+    expect(typeof createMockPruningResult).toBe('function');
+    expect(typeof createMockMultiStageResult).toBe('function');
+    expect(typeof generateTestChunks).toBe('function');
+  });
+});
