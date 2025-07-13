@@ -2353,7 +2353,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { phase, stage, agentMetrics } = req.body;
+    const { phase, stage } = req.body;
     
     // Validate agent architecture
     const validationResults = {
