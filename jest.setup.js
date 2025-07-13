@@ -125,5 +125,11 @@ jest.mock('./lib/pinecone-client', () => ({
   ])
 }));
 
+// Mock DOM methods not available in JSDOM
+Object.defineProperty(window.Element.prototype, 'scrollIntoView', {
+  writable: true,
+  value: jest.fn(),
+});
+
 // Set test environment
 process.env.NODE_ENV = 'test';

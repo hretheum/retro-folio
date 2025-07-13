@@ -4,32 +4,36 @@ import userEvent from '@testing-library/user-event';
 import { ErykChat } from '../ErykChat';
 
 // Mock the useChat hook
+const mockUseChat = jest.fn();
 jest.mock('ai/react', () => ({
-  useChat: () => ({
-    messages: [
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: 'Cześć! Jestem Eryk AI.',
-      },
-      {
-        id: '1',
-        role: 'user',
-        content: 'Test message',
-      },
-      {
-        id: '2',
-        role: 'assistant',
-        content: 'Test response',
-      },
-    ],
-    input: '',
-    handleInputChange: jest.fn(),
-    handleSubmit: jest.fn(),
-    isLoading: false,
-    error: null,
-  }),
+  useChat: mockUseChat
 }));
+
+// Default mock implementation
+mockUseChat.mockReturnValue({
+  messages: [
+    {
+      id: 'welcome',
+      role: 'assistant',
+      content: 'Cześć! Jestem Eryk AI.',
+    },
+    {
+      id: '1',
+      role: 'user',
+      content: 'Test message',
+    },
+    {
+      id: '2',
+      role: 'assistant',
+      content: 'Test response',
+    },
+  ],
+  input: '',
+  handleInputChange: jest.fn(),
+  handleSubmit: jest.fn(),
+  isLoading: false,
+  error: null,
+});
 
 describe('ErykChat', () => {
   it('renders chat interface', () => {
@@ -83,9 +87,8 @@ describe('ErykChat', () => {
   });
   
   it('handles form submission', async () => {
-    const { useChat } = jest.requireMock('ai/react');
     const handleSubmit = jest.fn();
-    useChat.mockReturnValue({
+    mockUseChat.mockReturnValue({
       messages: [],
       input: 'Test question',
       handleInputChange: jest.fn(),
@@ -103,8 +106,7 @@ describe('ErykChat', () => {
   });
   
   it('disables input when loading', () => {
-    const { useChat } = jest.requireMock('ai/react');
-    useChat.mockReturnValue({
+    mockUseChat.mockReturnValue({
       messages: [],
       input: '',
       handleInputChange: jest.fn(),
@@ -123,8 +125,7 @@ describe('ErykChat', () => {
   });
   
   it('displays error message', () => {
-    const { useChat } = jest.requireMock('ai/react');
-    useChat.mockReturnValue({
+    mockUseChat.mockReturnValue({
       messages: [],
       input: '',
       handleInputChange: jest.fn(),
@@ -152,8 +153,7 @@ describe('ErykChat', () => {
   });
   
   it('shows loading indicator', () => {
-    const { useChat } = jest.requireMock('ai/react');
-    useChat.mockReturnValue({
+    mockUseChat.mockReturnValue({
       messages: [],
       input: '',
       handleInputChange: jest.fn(),
