@@ -53,7 +53,7 @@ async function runTests() {
   }
 }
 
-async function updateValidationFile(filename, phase, passed) {
+async function updateValidationFile(filename, passed) {
   const filePath = path.join(process.cwd(), filename);
   
   if (!fs.existsSync(filePath)) {
