@@ -1,0 +1,163 @@
+name: Phase 1 Validation with Real API Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  phase1-validation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Setup environment variables
+      run: |
+        echo "Setting up test environment..."
+        echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> $GITHUB_ENV
+        echo "VERCEL_TOKEN=${VERCEL_TOKEN}" >> $GITHUB_ENV
+        echo "DATABASE_URL=${DATABASE_URL}" >> $GITHUB_ENV
+        echo "SUPABASE_URL=${SUPABASE_URL}" >> $GITHUB_ENV
+        echo "SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}" >> $GITHUB_ENV
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        
+    - name: Run unit tests
+      run: npm test
+      
+    - name: Run integration tests
+      run: npm run test:integration
+      
+    - name: Test OpenAI API connectivity
+      run: |
+        echo "Testing OpenAI API connectivity..."
+        curl -s -H "Authorization: Bearer $OPENAI_API_KEY" \
+             -H "Content-Type: application/json" \
+             -d '{
+               "model": "gpt-3.5-turbo",
+               "messages": [{"role": "user", "content": "Hello"}],
+               "max_tokens": 10
+             }' \
+             https://api.openai.com/v1/chat/completions | jq '.choices[0].message.content'
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        
+    - name: Test Supabase connectivity
+      run: |
+        echo "Testing Supabase connectivity..."
+        curl -s -H "apikey: $SUPABASE_ANON_KEY" \
+             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+             "$SUPABASE_URL/rest/v1/" | jq '.'
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        
+    - name: Test Vercel API
+      run: |
+        echo "Testing Vercel API connectivity..."
+        curl -s -H "Authorization: Bearer $VERCEL_TOKEN" \
+             https://api.vercel.com/v1/user | jq '.user.email'
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        
+    - name: Test custom API endpoints
+      run: |
+        echo "Testing custom API endpoints..."
+        
+        # Test infrastructure validation
+        echo "Testing infrastructure validation..."
+        curl -s -X POST \
+             -H "Content-Type: application/json" \
+             -d '{"test": "infrastructure"}' \
+             https://your-app.vercel.app/api/validate-infrastructure | jq '.'
+             
+        # Test metrics collection
+        echo "Testing metrics collection..."
+        curl -s -X POST \
+             -H "Content-Type: application/json" \
+             -d '{"test": "metrics"}' \
+             https://your-app.vercel.app/api/collect-metrics | jq '.'
+             
+        # Test classification validation
+        echo "Testing classification validation..."
+        curl -s -X POST \
+             -H "Content-Type: application/json" \
+             -d '{"test": "classification"}' \
+             https://your-app.vercel.app/api/validate-classification | jq '.'
+             
+    - name: Run E2E tests with Playwright
+      run: |
+        echo "Running E2E tests with real API calls..."
+        npx playwright test --reporter=html
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        
+    - name: Generate validation report
+      run: |
+        echo "Generating comprehensive validation report..."
+        node scripts/generate-validation-report.js
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: phase1-validation-results
+        path: |
+          test-results/
+          playwright-report/
+          coverage/
+          
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          let report = '## Phase 1 Validation Results\n\n';
+          
+          try {
+            const testResults = fs.readFileSync('test-results/validation-report.json', 'utf8');
+            const results = JSON.parse(testResults);
+            
+            report += `### ✅ Tests Passed: ${results.passed}\n`;
+            report += `### ❌ Tests Failed: ${results.failed}\n`;
+            report += `### 📊 Coverage: ${results.coverage}%\n\n`;
+            
+            if (results.apiTests) {
+              report += '### 🔌 API Tests:\n';
+              results.apiTests.forEach(test => {
+                report += `- ${test.name}: ${test.status}\n`;
+              });
+            }
+          } catch (error) {
+            report += '❌ Could not read test results\n';
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: report
+          });
