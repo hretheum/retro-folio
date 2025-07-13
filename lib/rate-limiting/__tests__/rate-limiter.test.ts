@@ -1,3 +1,81 @@
+// Mock ioredis before importing
+jest.mock('ioredis', () => {
+  class MockRedis {
+    constructor() {}
+    async get() { return null; }
+    async set() { return 'OK'; }
+    async incr() { return 1; }
+    async expire() { return 1; }
+    async del() { return 1; }
+    async flushall() { return 'OK'; }
+    async connect() { return Promise.resolve(); }
+    async disconnect() { return Promise.resolve(); }
+    async quit() { return Promise.resolve(); }
+    get status() { return 'ready'; }
+    on() {}
+    off() {}
+    emit() {}
+  }
+  return MockRedis;
+});
+
+// Mock rate-limiter-flexible
+jest.mock('rate-limiter-flexible', () => {
+  class MockRateLimiterRedis {
+    constructor(options: any) {
+      this.options = options;
+      this.counters = new Map();
+    }
+    
+    options: any;
+    counters: Map<string, number>;
+
+    async consume(key: string, points = 1) {
+      const current = this.counters.get(key) || 0;
+      const newCount = current + points;
+      
+      if (newCount > this.options.points) {
+        const error = new Error('Rate limit exceeded') as any;
+        error.remainingPoints = 0;
+        error.msBeforeNext = this.options.duration * 1000;
+        error.totalHits = newCount;
+        throw error;
+      }
+      
+      this.counters.set(key, newCount);
+      
+      return {
+        remainingPoints: this.options.points - newCount,
+        msBeforeNext: this.options.duration * 1000,
+        totalHits: newCount
+      };
+    }
+
+    async reset(key: string) {
+      this.counters.delete(key);
+      return true;
+    }
+
+    async get(key: string) {
+      const current = this.counters.get(key) || 0;
+      return {
+        remainingPoints: this.options.points - current,
+        msBeforeNext: this.options.duration * 1000,
+        totalHits: current
+      };
+    }
+
+    async delete(key: string) {
+      this.counters.delete(key);
+      return true;
+    }
+  }
+  
+  return {
+    RateLimiterRedis: MockRateLimiterRedis
+  };
+});
+
 import { RateLimiter, createRateLimitMiddleware, RATE_LIMITS } from '../rate-limiter';
 import { Request, Response, NextFunction } from 'express';
 

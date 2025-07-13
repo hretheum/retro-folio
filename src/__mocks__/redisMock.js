@@ -85,7 +85,13 @@ class MockRedis {
 // Export both named and default
 const mockRedis = new MockRedis();
 
+// Default export for ioredis
 module.exports = MockRedis;
 module.exports.default = MockRedis;
+
+// Named exports
 module.exports.createClient = () => new MockRedis();
 module.exports.Redis = MockRedis;
+
+// For CommonJS compatibility
+module.exports.__esModule = true;

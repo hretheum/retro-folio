@@ -16,7 +16,8 @@ export default {
     '<rootDir>/src/**/__tests__/**/*.{ts,tsx}',
     '<rootDir>/src/**/*.{test,spec}.{ts,tsx}',
     '<rootDir>/lib/**/__tests__/**/*.{ts,tsx}',
-    '<rootDir>/lib/**/*.{test,spec}.{ts,tsx}'
+    '<rootDir>/lib/**/*.{test,spec}.{ts,tsx}',
+    '<rootDir>/tests/**/*.{test,spec}.{ts,tsx}'
   ],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
