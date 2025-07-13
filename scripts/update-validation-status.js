@@ -168,6 +168,7 @@ async function main() {
   await updateValidationFile('PHASE_1_VALIDATION_RESULTS.md', 'phase1', testResults.phase1);
   await updateValidationFile('PHASE_2_VALIDATION_RESULTS.md', 'phase2', testResults.phase2);
   await updateValidationFile('PHASE_3_VALIDATION_RESULTS.md', 'phase3', testResults.phase3);
+  await updateValidationFile('PHASE_4_VALIDATION_RESULTS.md', 'phase4', testResults.phase4);
   
   // Generate test report
   await generateTestReport(testResults);
