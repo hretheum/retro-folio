@@ -1,5 +1,9 @@
 import { MemoryManager, MemoryEntry } from './memory-manager';
 import { HierarchicalIntegration } from '../intent/hierarchical-integration';
+import { WorkingMemory } from './memory/working-memory';
+import { EpisodicMemory } from './memory/episodic-memory';
+import { SemanticMemory } from './memory/semantic-memory';
+import { MemoryPersistence } from './memory/memory-persistence';
 
 export interface ContextualChatRequest {
   message: string;
@@ -462,7 +466,7 @@ export class ContextIntegration {
     const session = this.sessions.get(sessionId);
     
     return {
-      session,
+      session: session || null,
       memoryStats: {
         working: session?.memories.working.length || 0,
         episodic: session?.memories.episodic.length || 0,
