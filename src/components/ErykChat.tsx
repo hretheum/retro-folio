@@ -255,7 +255,7 @@ export function ErykChat({ isOpen = true, onClose, embedded = false }: ErykChatP
                   <div className="message-content">
                     <Sparkles className="w-4 h-4 text-blue-400 flex-shrink-0 mt-1" />
                     <div className="message-text">
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" data-testid="loader" />
                     </div>
                   </div>
                 </motion.div>
