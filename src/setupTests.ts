@@ -9,9 +9,10 @@ import { TextEncoder, TextDecoder } from 'util';
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder as any;
 
-// Fetch polyfill
+// Fetch polyfill - use global fetch if available
 if (!global.fetch) {
-  global.fetch = require('node-fetch');
+  // Use built-in fetch in Node 18+ or mock
+  global.fetch = jest.fn();
 }
 
 // Mock dla Pinecone
