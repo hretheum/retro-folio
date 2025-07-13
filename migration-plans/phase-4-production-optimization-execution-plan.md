@@ -3047,6 +3047,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { phase, stage, deploymentMetrics } = req.body;
     
+    // Log deployment metrics for debugging
+    console.log('[VALIDATION] Deployment metrics received:', deploymentMetrics);
+    
     // Validate production deployment
     const validationResults = {
       phase: 'phase-4-production-optimization',
