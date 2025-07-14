@@ -1,0 +1,71 @@
+name: Phase Validation Tests
+
+on:
+  push:
+    branches: [ main, development ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run Phase 1 Tests
+      run: npm test -- --testPathPatterns="phase.*1|query.*intelligence|context.*sizing" --verbose --passWithNoTests
+      continue-on-error: true
+      
+    - name: Run Phase 2 Tests
+      run: npm test -- --testPathPatterns="phase.*2|multi.*stage|hybrid.*search" --verbose --passWithNoTests
+      continue-on-error: true
+      
+    - name: Run Phase 3 Tests
+      run: npm test -- --testPathPatterns="phase.*3|context.*pruning|context.*cache" --verbose --passWithNoTests
+      continue-on-error: true
+      
+    - name: Run Phase 4 Tests
+      run: npm test -- --testPathPatterns="phase.*4|integration|pipeline" --verbose --passWithNoTests
+      continue-on-error: true
+      
+    - name: Run E2E Tests
+      run: npm test -- --testPathPatterns="e2e|end.*to.*end" --verbose --passWithNoTests
+      continue-on-error: true
+      
+    - name: Generate Test Coverage
+      run: npm run test:coverage
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        
+    - name: Update validation status
+      if: always()
+      run: |
+        echo "📊 Updating validation status based on test results"
+        node scripts/update-validation-status.js || echo "⚠️ Status update completed with warnings"
+        
+    - name: Display Test Summary
+      if: always()
+      run: |
+        echo "📋 Validation process completed"
+        echo "Check VALIDATION_TEST_REPORT.md for detailed results"

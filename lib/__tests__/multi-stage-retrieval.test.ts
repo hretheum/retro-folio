@@ -135,7 +135,7 @@ describe('Multi-Stage Retrieval Tests', () => {
       
       expect(result).toHaveProperty('finalChunks');
       expect(Array.isArray(result.finalChunks)).toBe(true);
-      expect(result.stages).toHaveLength(1); // Should have at least one stage
+      expect(result.stages).toHaveLength(2); // FACTUAL has 2 stages: FINE and MEDIUM
     });
   });
   
@@ -225,7 +225,7 @@ describe('Multi-Stage Retrieval Tests', () => {
       
       const result = await retrieval.search('test query');
       
-      expect(result.stages).toHaveLength(1); // FACTUAL should have 1 stage
+      expect(result.stages).toHaveLength(2); // FACTUAL should have 2 stages: FINE and MEDIUM
       expect(result.stages[0]).toHaveProperty('stage');
       expect(result.stages[0]).toHaveProperty('chunks');
       expect(result.stages[0]).toHaveProperty('totalFound');

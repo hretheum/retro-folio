@@ -103,6 +103,7 @@ describe('Enhanced Hybrid Search Tests', () => {
   
   describe('Error Handling', () => {
     const mockSemanticSearch = require('../pinecone-vector-store').semanticSearchPinecone;
+    const mockHybridSearch = require('../pinecone-vector-store').hybridSearchPinecone;
     const mockAnalyzeQueryIntent = require('../chat-intelligence').analyzeQueryIntent;
     const mockGetOptimalContextSize = require('../chat-intelligence').getOptimalContextSize;
     
@@ -118,11 +119,22 @@ describe('Enhanced Hybrid Search Tests', () => {
     
     it('should handle search failures gracefully', async () => {
       mockSemanticSearch.mockRejectedValue(new Error('Search failed'));
+      mockHybridSearch.mockRejectedValue(new Error('Search failed'));
       
       const result = await enhancedSearch.search('test query');
       
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThanOrEqual(0);
+      
+      // Reset mocks for other tests
+      mockSemanticSearch.mockResolvedValue([{
+        chunk: { id: 'test', text: 'test content', metadata: {} },
+        score: 0.8
+      }]);
+      mockHybridSearch.mockResolvedValue([{
+        chunk: { id: 'test', text: 'test content', metadata: {} },
+        score: 0.8
+      }]);
     });
     
     it('should handle empty search results', async () => {

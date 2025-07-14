@@ -456,23 +456,30 @@ export class EnhancedHybridSearch {
     } catch (error) {
       console.error('[EnhancedHybridSearch] Search failed:', error);
       
-      // Fallback to basic semantic search
-      const fallbackResults = await semanticSearchPinecone(userQuery, {
-        topK: config.topK,
-        minScore: options.minScore || 0.5
-      });
-      
-      return fallbackResults.map(result => ({
-        ...result,
-        searchStage: 'SEMANTIC' as const,
-        relevanceFactors: {
-          semantic: result.score,
-          lexical: 0,
-          metadata: 0,
-          final: result.score
-        },
-        diversityScore: 0.5
-      }));
+      try {
+        // Fallback to basic semantic search
+        const fallbackResults = await semanticSearchPinecone(userQuery, {
+          topK: config.topK,
+          minScore: options.minScore || 0.5
+        });
+        
+        return fallbackResults.map(result => ({
+          ...result,
+          searchStage: 'SEMANTIC' as const,
+          relevanceFactors: {
+            semantic: result.score,
+            lexical: 0,
+            metadata: 0,
+            final: result.score
+          },
+          diversityScore: 0.5
+        }));
+      } catch (fallbackError) {
+        console.error('[EnhancedHybridSearch] Fallback search also failed:', fallbackError);
+        
+        // Return empty results if all searches fail
+        return [];
+      }
     }
   }
   

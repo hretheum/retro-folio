@@ -155,15 +155,15 @@ describe('Smart Context Cache Tests', () => {
     it('should evict entries when memory limit is reached', () => {
       const largeChunks: ContextChunk[] = Array(10).fill(null).map((_, i) => ({
         id: `chunk${i}`,
-        content: 'Very long content that uses lots of memory'.repeat(100),
+        content: 'Very long content that uses lots of memory'.repeat(1000), // Increased even more to trigger eviction
         metadata: { contentType: 'work' },
         score: 0.8,
         tokens: 1000,
         source: `test${i}`
       }));
       
-      // Add multiple entries
-      for (let i = 0; i < 5; i++) {
+      // Add multiple entries to exceed memory limit
+      for (let i = 0; i < 20; i++) {
         cache.set(`test query ${i}`, 100, largeChunks);
       }
       
@@ -201,8 +201,8 @@ describe('Smart Context Cache Tests', () => {
       // Should be available immediately
       expect(shortTTLCache.get('test query', 100)).toEqual(testChunks);
       
-      // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Wait for expiration (need to wait longer than calculated TTL: 100ms * 2 * 1.5 = 300ms)
+      await new Promise(resolve => setTimeout(resolve, 350));
       
       // Should be expired
       expect(shortTTLCache.get('test query', 100)).toBeNull();
@@ -211,6 +211,7 @@ describe('Smart Context Cache Tests', () => {
     });
     
     it('should handle different TTL for different query types', () => {
+      mockAnalyzeQueryIntent.mockClear(); // Clear previous calls
       mockAnalyzeQueryIntent.mockReturnValueOnce('FACTUAL');
       mockAnalyzeQueryIntent.mockReturnValueOnce('CASUAL');
       
@@ -264,7 +265,7 @@ describe('Smart Context Cache Tests', () => {
     });
     
     it('should invalidate entries matching pattern', () => {
-      const testChunks: ContextChunk[] = [
+      const reactChunks: ContextChunk[] = [
         {
           id: 'chunk1',
           content: 'Test content about React',
@@ -275,15 +276,26 @@ describe('Smart Context Cache Tests', () => {
         }
       ];
       
-      cache.set('React query', 100, testChunks);
-      cache.set('Vue query', 100, testChunks);
+      const vueChunks: ContextChunk[] = [
+        {
+          id: 'chunk2',
+          content: 'Test content about Vue',
+          metadata: { contentType: 'work' },
+          score: 0.8,
+          tokens: 10,
+          source: 'test'
+        }
+      ];
+      
+      cache.set('React query', 100, reactChunks);
+      cache.set('Vue query', 100, vueChunks);
       
       expect(cache.getStats().totalEntries).toBe(2);
       
       cache.invalidate('React');
       
       expect(cache.getStats().totalEntries).toBe(1);
-      expect(cache.get('Vue query', 100)).toEqual(testChunks);
+      expect(cache.get('Vue query', 100)).toEqual(vueChunks);
       expect(cache.get('React query', 100)).toBeNull();
     });
   });
@@ -319,8 +331,8 @@ describe('Smart Context Cache Tests', () => {
       shortTTLCache.set('test query', 100, testChunks);
       expect(shortTTLCache.getStats().totalEntries).toBe(1);
       
-      // Wait for expiration
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for expiration (TTL = 100ms * 2 * 1.5 = 300ms for FACTUAL with high score)
+      await new Promise(resolve => setTimeout(resolve, 350));
       
       // Optimize should clean up expired entries
       shortTTLCache.optimize();

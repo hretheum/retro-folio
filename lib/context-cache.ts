@@ -247,15 +247,24 @@ export class SmartContextCache {
     chunks: ContextChunk[],
     queryIntent?: string
   ): void {
-    const intent = queryIntent || analyzeQueryIntent(userQuery);
+    let intent = queryIntent;
+    if (!intent) {
+      try {
+        intent = analyzeQueryIntent(userQuery);
+      } catch (error) {
+        // Fallback to default intent if query analysis fails
+        intent = 'FACTUAL';
+      }
+    }
     const key = this.generateCacheKey(userQuery, contextSize, intent);
     
     // Check if we need to evict before adding
     const entrySize = this.calculateMemoryUsage(chunks);
     const newMemoryUsage = this.memoryUsage + entrySize;
     
-    // Evict entries if necessary
-    while (this.shouldEvict() && this.cache.size > 0) {
+    // Evict entries if necessary (check predictive memory usage)
+    const predictiveMemoryMB = (this.memoryUsage + entrySize) / (1024 * 1024);
+    while ((predictiveMemoryMB > this.config.maxMemoryMB || this.cache.size >= this.config.maxEntries) && this.cache.size > 0) {
       this.evictLeastUsed();
     }
     

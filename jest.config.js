@@ -1,5 +1,5 @@
 /** @type {import('jest').Config} */
-export default {
+module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
   setupFiles: ['<rootDir>/jest.setup.js'],
@@ -15,6 +15,10 @@ export default {
     '<rootDir>/src/**/*.{test,spec}.{ts,tsx}',
     '<rootDir>/lib/**/__tests__/**/*.{ts,tsx}',
     '<rootDir>/lib/**/*.{test,spec}.{ts,tsx}'
+  ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/__mocks__/'
   ],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

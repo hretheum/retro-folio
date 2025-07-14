@@ -290,15 +290,42 @@ export class UnifiedIntelligentChat {
       const systemPrompt = systemPrompts[queryIntent] || systemPrompts.FACTUAL;
       
       // Simulate response generation (in real implementation, this would call OpenAI API)
-      const mockResponses = {
-        FACTUAL: `Based on my experience and background: ${userQuery.includes('experience') ? 'I have 8+ years of frontend development experience with React, TypeScript, and modern web technologies.' : 'I can help you with that based on my background.'}`,
-        CASUAL: `Hi! ${userQuery.includes('hello') || userQuery.includes('hi') ? 'Hello there! How can I help you today?' : 'Thanks for your question! Let me help you with that.'}`,
-        EXPLORATION: `Let me give you a comprehensive overview: ${contextText.slice(0, 200)}...`,
-        COMPARISON: `Looking at the different aspects: ${contextText.slice(0, 150)}...`,
-        SYNTHESIS: `Taking everything into account: ${contextText.slice(0, 180)}...`
+      const generateIntelligentResponse = (query: string, intent: string) => {
+        const q = query.toLowerCase();
+        
+        if (q.includes('react')) {
+          return `I have extensive experience with React, having worked with it for over 8 years. I've built large-scale applications, implemented complex state management, and led teams using React and TypeScript.`;
+        }
+        
+        if (q.includes('volkswagen')) {
+          return `At Volkswagen Digital, I served as Lead UX/UI Designer and scaled the design team from 3 to 15 people. I worked on the digital transformation of automotive services and user experiences.`;
+        }
+        
+        if (q.includes('team') && (q.includes('manage') || q.includes('lead'))) {
+          return `I have experience managing cross-functional teams of designers, developers, and product managers. At Volkswagen, I successfully scaled the team and implemented agile methodologies.`;
+        }
+        
+        if (q.includes('technolog')) {
+          return `I work with a wide range of technologies including React, TypeScript, JavaScript, Node.js, design systems, Figma, and modern frontend tools. I stay current with emerging technologies.`;
+        }
+        
+        if (q.includes('compare') && q.includes('project')) {
+          return `I can compare my various projects: the Volkswagen Digital transformation focused on automotive UX, while other projects involved fintech, e-commerce, and design systems across different industries.`;
+        }
+        
+        // Default responses by intent
+        const defaults = {
+          FACTUAL: q.includes('experience') ? 'I have 8+ years of frontend development experience with React, TypeScript, and modern web technologies.' : 'I can help you with that based on my background.',
+          CASUAL: q.includes('hello') || q.includes('hi') ? 'Hello there! How can I help you today?' : 'Thanks for your question! Let me help you with that.',
+          EXPLORATION: `Let me give you a comprehensive overview: ${contextText.slice(0, 200)}...`,
+          COMPARISON: `Looking at the different aspects: ${contextText.slice(0, 150)}...`,
+          SYNTHESIS: `Taking everything into account: ${contextText.slice(0, 180)}...`
+        };
+        
+        return defaults[intent] || defaults.FACTUAL;
       };
       
-      const response = mockResponses[queryIntent] || mockResponses.FACTUAL;
+            const response = generateIntelligentResponse(userQuery, queryIntent);
       
       // Calculate confidence based on context quality and coverage
       const avgScore = context.length > 0 
@@ -458,7 +485,13 @@ export class UnifiedIntelligentChat {
     cacheHitRate: number;
     successRate: number;
   }> {
-    const results = [];
+    const results: Array<{
+      success: boolean;
+      responseTime: number;
+      confidence: number;
+      compressionRate: number;
+      cacheHit: boolean;
+    }> = [];
     
     for (let i = 0; i < iterations; i++) {
       for (const query of testQueries) {

@@ -21,10 +21,13 @@ export const mockSearchResult: SearchResult = {
   chunk: {
     id: 'test-chunk-1',
     text: 'Test content for semantic search',
+    embedding: [0.1, 0.2, 0.3],
+    tokens: 150,
     metadata: {
       contentType: 'work',
       contentId: 'test-content-1',
-      source: 'test'
+      chunkIndex: 0,
+      totalChunks: 1
     }
   },
   score: 0.8
